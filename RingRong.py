@@ -23,7 +23,7 @@ class RingRong(IStrategy):
     def informative_pairs(self):
         return [("BTC/USDT", "5m"), ("ETH/USDT", "5m")]
 
-    def populate_indicators(self, dataframe: DataFrame, meta dict) -> DataFrame:
+    def populate_indicators(self, dataframe: pd.DataFrame, meta: dict) -> pd.DataFrame:
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
 
         dataframe["short"] = ta.EMA(dataframe, timeperiod=50)
@@ -55,7 +55,7 @@ class RingRong(IStrategy):
 
         return dataframe
 
-    def populate_entry_trend(self, dataframe: DataFrame, meta dict) -> DataFrame:
+    def populate_entry_trend(self, dataframe: pd.DataFrame, meta: dict) -> pd.DataFrame:
         dataframe.loc[
             (
                 (dataframe["adx"] > 25)
@@ -90,7 +90,7 @@ class RingRong(IStrategy):
 
         return dataframe
 
-    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    def populate_exit_trend(self, dataframe: pd.DataFrame, meta dict) -> pd.DataFrame:
         dataframe.loc[
             (
                 (dataframe["adx"] < 25)
@@ -111,7 +111,7 @@ class RingRong(IStrategy):
                 | (dataframe["close"] > dataframe["sma_200"])
                 | (dataframe["close"] < dataframe['bb_middleband'])
                 | (dataframe["rsi"] < 50)
-                | (dataframe["mfi"] < 50)  
+                | (dataframe["mfi"] < 50)
                 & (dataframe["volume"] > 0)
             ),
             ["exit_short", "exit_tag"],
