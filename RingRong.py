@@ -4,6 +4,7 @@ from pandas import DataFrame
 from freqtrade.persistence import Trade
 from datetime import datetime, timedelta
 
+import pandas as pd
 import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 
