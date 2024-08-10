@@ -1,3 +1,12 @@
+# --- Do not remove these libs ---
+from freqtrade.strategy import IStrategy
+from pandas import DataFrame
+from freqtrade.persistence import Trade
+from datetime import datetime, timedelta
+
+import talib.abstract as ta
+import freqtrade.vendor.qtpylib.indicators as qtpylib
+
 class RingRong(IStrategy):
     timeframe = "5m"
     can_short: bool = True
