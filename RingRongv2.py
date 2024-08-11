@@ -18,6 +18,8 @@ class RingRongv2(IStrategy):
         "0": 100
     }
 
+    stoploss = -0.99  # use custom stoploss
+    use_custom_stoploss = True
     startup_candle_count = 200
 
     def informative_pairs(self):
