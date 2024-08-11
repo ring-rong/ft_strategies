@@ -8,7 +8,7 @@ import pandas as pd
 import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 
-class RingRong(IStrategy):
+class RingRongv2(IStrategy):
     timeframe = "5m"
     can_short: bool = True
 
