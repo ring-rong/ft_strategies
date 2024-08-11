@@ -13,9 +13,9 @@ class RingRong(IStrategy):
     can_short: bool = True
 
     minimal_roi = {
-        "60": 0.01,
-        "30": 0.02,
-        "0": 0.04
+        "60": 0.50,
+        "30": 0.20,
+        "0": 100
     }
 
     startup_candle_count = 200
@@ -23,7 +23,7 @@ class RingRong(IStrategy):
     def informative_pairs(self):
         return [("BTC/USDT", "5m"), ("ETH/USDT", "5m")]
 
-    def populate_indicators(self, dataframe: pd.DataFrame, meta: dict) -> pd.DataFrame:
+    def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
 
         dataframe["short"] = ta.EMA(dataframe, timeperiod=50)
@@ -55,7 +55,7 @@ class RingRong(IStrategy):
 
         return dataframe
 
-    def populate_entry_trend(self, dataframe: pd.DataFrame, meta: dict) -> pd.DataFrame:
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe.loc[
             (
                 (dataframe["adx"] > 25)
@@ -90,7 +90,7 @@ class RingRong(IStrategy):
 
         return dataframe
 
-    def populate_exit_trend(self, dataframe: pd.DataFrame, meta dict) -> pd.DataFrame:
+    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe.loc[
             (
                 (dataframe["adx"] < 25)
@@ -99,8 +99,9 @@ class RingRong(IStrategy):
                 | (dataframe["close"] > dataframe['bb_middleband'])
                 | (dataframe["rsi"] > 50)
                 | (dataframe["mfi"] > 50)
-                & (dataframe["volume"] > 0)
-            ),
+            )
+            &
+            (dataframe["volume"] > 0),
             ["exit_long", "exit_tag"],
         ] = (1, "exit_long")
 
@@ -111,9 +112,10 @@ class RingRong(IStrategy):
                 | (dataframe["close"] > dataframe["sma_200"])
                 | (dataframe["close"] < dataframe['bb_middleband'])
                 | (dataframe["rsi"] < 50)
-                | (dataframe["mfi"] < 50)
-                & (dataframe["volume"] > 0)
-            ),
+                | (dataframe["mfi"] < 50)  
+            )
+            &
+            (dataframe["volume"] > 0),
             ["exit_short", "exit_tag"],
         ] = (1, "exit_short")
 
