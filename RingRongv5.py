@@ -5,7 +5,7 @@ from datetime import datetime
 import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 
-class RingRongv5(IStrategy):
+class RingRong(IStrategy):
     timeframe = "5m"
     can_short: bool = True
 
