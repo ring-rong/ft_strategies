@@ -67,7 +67,7 @@ class RingRongTrendFollowing(IStrategy):
                 (dataframe["trend_BTC/USDT_4h"] == True)  # Overall market uptrend on 4h
                 & (dataframe["trend_strength_BTC/USDT_1h"] == True)  # Strong trend on 1h
                 & (dataframe["ema_50"] > dataframe["ema_200"])  # Confirmed uptrend on 5m
-                & (dataframe["rsi"] > 50)  # RSI indicates bullish momentum
+                & (dataframe["rsi"] < 60)  # Lowered RSI threshold to allow earlier entries
                 & (dataframe["macd"] > dataframe["macdsignal"])  # MACD bullish crossover
                 & (dataframe["volume"] > 0)
             ),
@@ -80,7 +80,7 @@ class RingRongTrendFollowing(IStrategy):
                 (dataframe["trend_BTC/USDT_4h"] == False)  # Overall market downtrend on 4h
                 & (dataframe["trend_strength_BTC/USDT_1h"] == False)  # Strong downtrend on 1h
                 & (dataframe["ema_50"] < dataframe["ema_200"])  # Confirmed downtrend on 5m
-                & (dataframe["rsi"] < 50)  # RSI indicates bearish momentum
+                & (dataframe["rsi"] < 40)  # Allow earlier entries with lower RSI threshold
                 & (dataframe["macd"] < dataframe["macdsignal"])  # MACD bearish crossover
                 & (dataframe["volume"] > 0)
             ),
