@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json.schemastore.org/freqtrade-config",
+  "max_open_trades": 6,
+  "stake_currency": "USDT",
+  "stake_amount": "unlimited",
+  "tradable_balance_ratio": 0.80,
+  "fiat_display_currency": "USD",
+  "dry_run": true,
+  "grinding_enable": true,
+  "dry_run_wallet": 10000,
+  "cancel_open_orders_on_exit": false,
+  "timeframe": "5m",
+  "stoploss": -0.10,
+  "unfilledtimeout": {
+    "entry": 10,
+    "exit": 10,
+    "exit_timeout_count": 0,
+    "unit": "minutes"
+  },
+  "pairlists": [
+    {
+      "method": "VolumePairList",
+      "number_assets": 50,
+      "sort_key": "quoteVolume",
+      "refresh_period": 180000
+    }
+  ],
+  "exchange": {
+    "name": "binance",
+    "key": "qOlvZ8PSdo4GsGF9WXrMdAFlPYoi5svGSKZwyKGC2WPQObvuEOZIkM8JWI2BKlZT",
+    "secret": "dCYCiBv8IF5pt2jgaCi9m8Kq4XvRJjB1WD6aoZotAMkqcRbV6ScGo4r0EQ1ktvTD",
+    "ccxt_config": {
+      "enableRateLimit": true,
+      "rateLimit": 1200,
+      "options": {
+        "defaultType": "future"
+      }
+    },
+	    "ccxt_async_config": {
+      "enableRateLimit": true,
+      "rateLimit": 1200
+    }
+  },
+  "telegram": {
+    "enabled": true,
+    "token": "6173054253:AAGZ1El5Ok_1HMhnsey2SEHwzlVKDGwnV4I",
+    "chat_id": "330644191",
+    "notification_settings": {
+      "status": "on",
+      "warning": "on",
+      "startup": "on",
+      "entry": "on",
+      "entry_fill": "on",
+      "exit": {
+        "roi": "off",
+        "emergency_exit": "off",
+        "force_exit": "off",
+        "exit_signal": "off",
+        "trailing_stop_loss": "off",
+        "stop_loss": "off",
+        "stoploss_on_exchange": "off",
+        "custom_exit": "off"
+      },
+      "exit_fill": "on",
+      "entry_cancel": "on",
+      "exit_cancel": "on",
+      "protection_trigger": "off",
+      "protection_trigger_global": "on",
+      "show_candle": "off"
+    },
+    "reload": true,
+    "balance_dust_level": 0.01
+  },
+  "api_server": {
+    "enabled": true,
+    "listen_ip_address": "0.0.0.0",
+    "listen_port": 8080,
+    "username": "ringrong",
+    "password": "ringrong"
+  },
+  "entry_pricing": {
+  "price_side": "same",
+  "use_order_book": true,
+  "order_book_top": 1,
+  "price_last_balance": 0,
+  "check_depth_of_market": {
+    "enabled": false,
+    "bids_to_ask_delta": 1
+   }
+  },
+	"exit_pricing": {
+	  "price_side": "same",
+	  "use_order_book": true,
+	  "order_book_top": 1,
+	  "price_last_balance": 0
+	},
+  "bot_name": "freqtrade",
+  "db_url": "sqlite:///tradesv3.sqlite",
+  "initial_state": "running",
+  "force_entry_enable": false,
+  "internals": {
+    "process_throttle_secs": 5,
+    "heartbeat_interval": 60
+  },
+  "disable_dataframe_checks": false,
+  "strategy_path": "user_data/strategies/",
+  "recursive_strategy_search": false,
+  "add_config_files": [],
+  "trading_mode": "futures",
+  "margin_mode": "isolated",
+  "futures_leverage": 5,
+  "position_adjustment_enable": true,
+  "use_exit_signal": true,
+  "exit_profit_only": false
+}
+
