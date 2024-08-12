@@ -13,16 +13,16 @@ class RingRong(IStrategy):
     can_short: bool = True
 
     minimal_roi = {
-        "60": 0.50,
-        "30": 0.20,
-        "0": 100
+        "120": 0.20,
+        "60": 0.10,
+        "0": 0.05
     }
 
-    stoploss = -0.99  # use custom stoploss
+    stoploss = -0.10
     use_custom_stoploss = True
     startup_candle_count = 200
 
-    # Определяем таймфреймы для анализа
+    # Define timeframe for analysis
     informative_timeframes = {
         "15m": "15m",
         "1h": "1h",
@@ -37,13 +37,14 @@ class RingRong(IStrategy):
         return informative_pairs
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Индикаторы для основного таймфрейма (5m)
+        # Main timeframe indicators (5m)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         dataframe["short"] = ta.EMA(dataframe, timeperiod=50)
         dataframe["long"] = ta.EMA(dataframe, timeperiod=200)
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
         dataframe["mfi"] = ta.MFI(dataframe)
         dataframe["sma_200"] = ta.SMA(dataframe, timeperiod=200)
+        dataframe['atr'] = ta.ATR(dataframe, timeperiod=14)
 
         # Bollinger Bands
         bollinger = qtpylib.bollinger_bands(qtpylib.typical_price(dataframe), window=20, stds=2)
@@ -51,7 +52,12 @@ class RingRong(IStrategy):
         dataframe['bb_middleband'] = bollinger['mid']
         dataframe['bb_upperband'] = bollinger['upper']
 
-        # Информативные таймфреймы
+        # MACD for trend confirmation
+        macd = ta.MACD(dataframe)
+        dataframe["macd"] = macd["macd"]
+        dataframe["macdsignal"] = macd["macdsignal"]
+
+        # Informative timeframes
         for tf_name, tf in self.informative_timeframes.items():
             for pair in ["BTC/USDT", "ETH/USDT"]:
                 informative = self.dp.get_pair_dataframe(pair, tf)
@@ -71,12 +77,13 @@ class RingRong(IStrategy):
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe.loc[
             (
-                (dataframe["adx"] > 25)
+                (dataframe["adx"] > 20)  # Lowering the threshold
                 & (dataframe["short"] > dataframe["long"])
                 & (dataframe["close"] > dataframe["sma_200"])
                 & (dataframe["close"] <= dataframe['bb_lowerband'])
-                & (dataframe["rsi"] < 30)
-                & (dataframe["mfi"] < 20)
+                & (dataframe["rsi"] < 35)  # Slightly higher RSI for entry
+                & (dataframe["mfi"] < 25)  # Slightly higher MFI for entry
+                & (dataframe["macd"] > dataframe["macdsignal"])  # MACD for confirmation
                 & (dataframe["trend_BTC/USDT_4h"] == True)
                 & (dataframe["trend_strength_BTC/USDT_1h"] == True)
                 & (dataframe["trend_strength_BTC/USDT_15m"] == True)
@@ -87,12 +94,13 @@ class RingRong(IStrategy):
 
         dataframe.loc[
             (
-                (dataframe["adx"] > 25)
+                (dataframe["adx"] > 20)  # Lowering the threshold
                 & (dataframe["short"] < dataframe["long"])
                 & (dataframe["close"] < dataframe["sma_200"])
                 & (dataframe["close"] >= dataframe['bb_upperband'])
-                & (dataframe["rsi"] > 70)
-                & (dataframe["mfi"] > 80)
+                & (dataframe["rsi"] > 65)  # Slightly lower RSI for entry
+                & (dataframe["mfi"] > 75)  # Slightly lower MFI for entry
+                & (dataframe["macd"] < dataframe["macdsignal"])  # MACD for confirmation
                 & (dataframe["trend_BTC/USDT_4h"] == False)
                 & (dataframe["trend_strength_BTC/USDT_1h"] == False)
                 & (dataframe["trend_strength_BTC/USDT_15m"] == False)
@@ -106,12 +114,13 @@ class RingRong(IStrategy):
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe.loc[
             (
-                (dataframe["adx"] < 25)
+                (dataframe["adx"] < 20)
                 | (qtpylib.crossed_below(dataframe["short"], dataframe["long"]))
                 | (dataframe["close"] < dataframe["sma_200"])
                 | (dataframe["close"] > dataframe['bb_middleband'])
                 | (dataframe["rsi"] > 50)
                 | (dataframe["mfi"] > 50)
+                | (dataframe["atr"] < 0.005)  # Low ATR indicating low volatility
             )
             &
             (dataframe["volume"] > 0),
@@ -120,12 +129,13 @@ class RingRong(IStrategy):
 
         dataframe.loc[
             (
-                (dataframe["adx"] < 25)
+                (dataframe["adx"] < 20)
                 | (qtpylib.crossed_above(dataframe["short"], dataframe["long"]))
                 | (dataframe["close"] > dataframe["sma_200"])
                 | (dataframe["close"] < dataframe['bb_middleband'])
                 | (dataframe["rsi"] < 50)
                 | (dataframe["mfi"] < 50)  
+                | (dataframe["atr"] < 0.005)  # Low ATR indicating low volatility
             )
             &
             (dataframe["volume"] > 0),
@@ -133,3 +143,18 @@ class RingRong(IStrategy):
         ] = (1, "exit_short")
 
         return dataframe
+
+    def custom_stoploss(self, pair: str, trade: Trade, current_time: datetime, current_rate: float,
+                        current_profit: float, **kwargs) -> float:
+        """
+        Custom stoploss with trailing stop based on ATR.
+        """
+        # Calculate ATR
+        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+        atr = dataframe['atr'].iloc[-1]
+
+        # Adjust the stoploss to ATR levels
+        stoploss = max(-0.05, -1.5 * atr)
+
+        # Ensure it doesn't exceed the configured stoploss
+        return stoploss
