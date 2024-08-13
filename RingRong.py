@@ -84,10 +84,7 @@ class RingRong15m(IStrategy):
                 & (dataframe["mfi"] > 80)  # MFI indicates overbought condition
                 & (dataframe["macd"] < dataframe["macdsignal"])  # MACD is bearish
                 & (dataframe["close"] < dataframe["bb_middleband"])  # Price below middle BB
-                & (
-                    (dataframe['consec_green'] >= 3)  # 3 or more consecutive green candles
-                    | (dataframe["rsi"] > 70)  # RSI is overbought
-                )
+                & (dataframe['consec_green'] >= 3)  # 3 or more consecutive green candles
                 & dataframe['is_long_upper_shadow']  # Significant upper shadow (bearish reversal signal)
             ),
             ["enter_short", "enter_tag"],
