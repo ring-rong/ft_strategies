@@ -5,7 +5,7 @@ import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 from freqtrade.persistence import Trade
 
-class RingRong(IStrategy):
+class RingRong15m(IStrategy):
     timeframe = "15m"
     can_short: bool = True
 
@@ -25,8 +25,11 @@ class RingRong(IStrategy):
         dataframe["short"] = ta.EMA(dataframe, timeperiod=50)
         dataframe["long"] = ta.EMA(dataframe, timeperiod=200)
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
-        dataframe["mfi"] = ta.MFI(dataframe)
+        dataframe["mfi"] = ta.MFI(dataframe, timeperiod=14)
         dataframe["atr"] = ta.ATR(dataframe, timeperiod=14)
+        
+        # MACD
+        dataframe['macd'], dataframe['macdsignal'], dataframe['macdhist'] = ta.MACD(dataframe, fastperiod=12, slowperiod=26, signalperiod=9)
 
         # Bollinger Bands
         bollinger = qtpylib.bollinger_bands(qtpylib.typical_price(dataframe), window=20, stds=2)
@@ -61,10 +64,11 @@ class RingRong(IStrategy):
                 & (dataframe["short"] > dataframe["long"])
                 & (dataframe["close"] > dataframe["long"])  # Price above long-term EMA
                 & (dataframe["rsi"] > 50)  # RSI above 50 indicates bullish momentum
+                & (dataframe["mfi"] < 20)  # MFI indicates oversold condition
+                & (dataframe["macd"] > dataframe["macdsignal"])  # MACD is bullish
                 & (dataframe["close"] > dataframe["bb_middleband"])  # Price above middle BB
                 & (dataframe['volume'] > 1.5 * dataframe['volume_mean_slow'])  # Volume spike
                 & (dataframe['consec_red'] >= 3)  # 3 or more consecutive red candles
-                & (dataframe["rsi"] < 30)  # RSI is oversold
                 & dataframe['is_long_lower_shadow']  # Significant lower shadow (bullish reversal signal)
             ),
             ["enter_long", "enter_tag"],
@@ -77,6 +81,8 @@ class RingRong(IStrategy):
                 & (dataframe["short"] < dataframe["long"])
                 & (dataframe["close"] < dataframe["long"])  # Price below long-term EMA
                 & (dataframe["rsi"] < 50)  # RSI below 50 indicates bearish momentum
+                & (dataframe["mfi"] > 80)  # MFI indicates overbought condition
+                & (dataframe["macd"] < dataframe["macdsignal"])  # MACD is bearish
                 & (dataframe["close"] < dataframe["bb_middleband"])  # Price below middle BB
                 & (
                     (dataframe['consec_green'] >= 3)  # 3 or more consecutive green candles
@@ -131,3 +137,15 @@ class RingRong(IStrategy):
             stoploss = max(-0.10, -1.5 * atr)
 
         return stoploss
+
+    def confirm_trade_entry(self, pair: str, order_type: str, amount: float, rate: float,
+                            time_in_force: str, **kwargs) -> bool:
+        """
+        Confirm entry with higher timeframe trend.
+        """
+        dataframe, _ = self.dp.get_analyzed_dataframe(pair, "1h")  # 1-hour timeframe for trend confirmation
+        if order_type == 'buy':
+            return dataframe['macd'].iloc[-1] > dataframe['macdsignal'].iloc[-1]  # Confirm uptrend
+        elif order_type == 'sell':
+            return dataframe['macd'].iloc[-1] < dataframe['macdsignal'].iloc[-1]  # Confirm downtrend
+        return False
