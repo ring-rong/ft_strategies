@@ -5,7 +5,7 @@ import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 from freqtrade.persistence import Trade
 
-class RingRong15m(IStrategy):
+class RingRongvv(IStrategy):
     timeframe = "15m"
     can_short: bool = True
 
