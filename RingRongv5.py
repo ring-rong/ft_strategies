@@ -65,65 +65,40 @@ class RingRong(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Bullish entry conditions
+        # Enter Long: Exit short and enter long
         dataframe.loc[
             (
-                (dataframe["adx"] > 25)  # ADX shows stronger trend
+                (dataframe["adx"] > 25)  # Strong trend
                 & (dataframe["short"] > dataframe["long"])
-                & (dataframe["close"] > dataframe["long"])  # Price above long-term EMA
-                & (dataframe["rsi"] > 50)  # RSI above 50 indicates bullish momentum
-                & (dataframe["close"] > dataframe["bb_middleband"])  # Price above middle BB
+                & (dataframe["close"] > dataframe["long"])  # Above long-term EMA
+                & (dataframe["rsi"] > 50)  # Bullish momentum
+                & (dataframe["close"] > dataframe["bb_middleband"])  # Above middle BB
                 & (dataframe["trend_BTC/USDT_4h"] == True)
                 & (dataframe["trend_strength_BTC/USDT_1h"] == True)
                 & (dataframe["volume"] > 0)
             ),
-            ["enter_long", "enter_tag"],
-        ] = (1, "adx_bullish")
+            ["enter_long", "exit_short", "enter_tag", "exit_tag"],
+        ] = (1, 1, "switch_to_long", "exit_short_to_long")
 
-        # Bearish entry conditions
+        # Enter Short: Exit long and enter short
         dataframe.loc[
             (
-                (dataframe["adx"] > 25)  # ADX shows stronger trend
+                (dataframe["adx"] > 25)  # Strong trend
                 & (dataframe["short"] < dataframe["long"])
-                & (dataframe["close"] < dataframe["long"])  # Price below long-term EMA
-                & (dataframe["rsi"] < 50)  # RSI below 50 indicates bearish momentum
-                & (dataframe["close"] < dataframe["bb_middleband"])  # Price below middle BB
+                & (dataframe["close"] < dataframe["long"])  # Below long-term EMA
+                & (dataframe["rsi"] < 50)  # Bearish momentum
+                & (dataframe["close"] < dataframe["bb_middleband"])  # Below middle BB
                 & (dataframe["trend_BTC/USDT_4h"] == False)
                 & (dataframe["trend_strength_BTC/USDT_1h"] == False)
                 & (dataframe["volume"] > 0)
             ),
-            ["enter_short", "enter_tag"],
-        ] = (1, "adx_bearish")
+            ["enter_short", "exit_long", "enter_tag", "exit_tag"],
+        ] = (1, 1, "switch_to_short", "exit_long_to_short")
 
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Bullish exit conditions
-        dataframe.loc[
-            (
-                (dataframe["adx"] < 20)  # Weakening trend
-                | (qtpylib.crossed_below(dataframe["short"], dataframe["long"]))
-                | (dataframe["close"] < dataframe["bb_middleband"])  # Price falls below middle BB
-                | (dataframe["rsi"] < 50)  # RSI drops below 50
-                | (dataframe["atr"] < 0.005)  # Low ATR indicates low volatility
-            )
-            & (dataframe["volume"] > 0),
-            ["exit_long", "exit_tag"],
-        ] = (1, "exit_long")
-
-        # Bearish exit conditions
-        dataframe.loc[
-            (
-                (dataframe["adx"] < 20)  # Weakening trend
-                | (qtpylib.crossed_above(dataframe["short"], dataframe["long"]))
-                | (dataframe["close"] > dataframe["bb_middleband"])  # Price rises above middle BB
-                | (dataframe["rsi"] > 50)  # RSI rises above 50
-                | (dataframe["atr"] < 0.005)  # Low ATR indicates low volatility
-            )
-            & (dataframe["volume"] > 0),
-            ["exit_short", "exit_tag"],
-        ] = (1, "exit_short")
-
+        # Since we flip between positions, explicit exit conditions are not required.
         return dataframe
 
     def custom_stoploss(self, pair: str, trade: Trade, current_time: datetime, current_rate: float,
