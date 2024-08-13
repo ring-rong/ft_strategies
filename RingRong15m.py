@@ -3,7 +3,7 @@ from pandas import DataFrame
 from datetime import datetime
 import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
-from freqtrade.persistence import Trade  # <-- Ensure this is imported
+from freqtrade.persistence import Trade
 
 class RingRong15m(IStrategy):
     timeframe = "15m"
@@ -42,9 +42,18 @@ class RingRong15m(IStrategy):
         dataframe['consec_green'] = (dataframe['close'] > dataframe['open']).astype(int).groupby((dataframe['close'] <= dataframe['open']).astype(int).cumsum()).cumsum()
         dataframe['consec_red'] = (dataframe['close'] < dataframe['open']).astype(int).groupby((dataframe['close'] >= dataframe['open']).astype(int).cumsum()).cumsum()
 
+        # Calculate candle shadows (wicks/tails)
+        dataframe['upper_shadow'] = dataframe['high'] - dataframe[['close', 'open']].max(axis=1)
+        dataframe['lower_shadow'] = dataframe[['close', 'open']].min(axis=1) - dataframe['low']
+
+        # Define significant shadow (wick/tail) threshold
+        dataframe['body_size'] = abs(dataframe['close'] - dataframe['open'])
+        dataframe['is_long_upper_shadow'] = dataframe['upper_shadow'] > 1.5 * dataframe['body_size']
+        dataframe['is_long_lower_shadow'] = dataframe['lower_shadow'] > 1.5 * dataframe['body_size']
+
         return dataframe
 
-       def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         # Bullish entry conditions
         dataframe.loc[
             (
@@ -56,6 +65,7 @@ class RingRong15m(IStrategy):
                 & (dataframe['volume'] > 1.5 * dataframe['volume_mean_slow'])  # Volume spike
                 & (dataframe['consec_red'] >= 3)  # 3 or more consecutive red candles
                 & (dataframe["rsi"] < 30)  # RSI is oversold
+                & dataframe['is_long_lower_shadow']  # Significant lower shadow (bullish reversal signal)
             ),
             ["enter_long", "enter_tag"],
         ] = (1, "adx_bullish_reversal")
@@ -72,6 +82,7 @@ class RingRong15m(IStrategy):
                     (dataframe['consec_green'] >= 3)  # 3 or more consecutive green candles
                     | (dataframe["rsi"] > 70)  # RSI is overbought
                 )
+                & dataframe['is_long_upper_shadow']  # Significant upper shadow (bearish reversal signal)
             ),
             ["enter_short", "enter_tag"],
         ] = (1, "adx_bearish_reversal")
