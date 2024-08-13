@@ -3,7 +3,7 @@ from pandas import DataFrame
 from datetime import datetime
 import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
-from freqtrade.persistence import Trade  # <-- Make sure this is imported
+from freqtrade.persistence import Trade  # <-- Ensure this is imported
 
 class RingRong15m(IStrategy):
     timeframe = "15m"
@@ -38,9 +38,13 @@ class RingRong15m(IStrategy):
         dataframe['volume_mean_slow'] = dataframe['volume'].rolling(window=20).mean()
         dataframe['volume_mean_fast'] = dataframe['volume'].rolling(window=5).mean()
 
+        # Count consecutive green/red candles
+        dataframe['consec_green'] = (dataframe['close'] > dataframe['open']).astype(int).groupby((dataframe['close'] <= dataframe['open']).astype(int).cumsum()).cumsum()
+        dataframe['consec_red'] = (dataframe['close'] < dataframe['open']).astype(int).groupby((dataframe['close'] >= dataframe['open']).astype(int).cumsum()).cumsum()
+
         return dataframe
 
-    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+       def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         # Bullish entry conditions
         dataframe.loc[
             (
@@ -50,9 +54,11 @@ class RingRong15m(IStrategy):
                 & (dataframe["rsi"] > 50)  # RSI above 50 indicates bullish momentum
                 & (dataframe["close"] > dataframe["bb_middleband"])  # Price above middle BB
                 & (dataframe['volume'] > 1.5 * dataframe['volume_mean_slow'])  # Volume spike
+                & (dataframe['consec_red'] >= 3)  # 3 or more consecutive red candles
+                & (dataframe["rsi"] < 30)  # RSI is oversold
             ),
             ["enter_long", "enter_tag"],
-        ] = (1, "adx_bullish")
+        ] = (1, "adx_bullish_reversal")
 
         # Bearish entry conditions
         dataframe.loc[
@@ -62,10 +68,13 @@ class RingRong15m(IStrategy):
                 & (dataframe["close"] < dataframe["long"])  # Price below long-term EMA
                 & (dataframe["rsi"] < 50)  # RSI below 50 indicates bearish momentum
                 & (dataframe["close"] < dataframe["bb_middleband"])  # Price below middle BB
-                & (dataframe['volume'] > 1.5 * dataframe['volume_mean_slow'])  # Volume spike
+                & (
+                    (dataframe['consec_green'] >= 3)  # 3 or more consecutive green candles
+                    | (dataframe["rsi"] > 70)  # RSI is overbought
+                )
             ),
             ["enter_short", "enter_tag"],
-        ] = (1, "adx_bearish")
+        ] = (1, "adx_bearish_reversal")
 
         return dataframe
 
