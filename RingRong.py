@@ -104,32 +104,54 @@ class RingRong15m(IStrategy):
 
         return dataframe
 
-    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Bullish exit conditions
-        dataframe.loc[
-            (
-                (dataframe["adx"] < 20)  # Weakening trend
-                | (qtpylib.crossed_below(dataframe["short"], dataframe["long"]))
-                | (dataframe["close"] < dataframe["bb_middleband"])  # Price falls below middle BB
-                | (dataframe["rsi"] < 50)  # RSI drops below 50
-                | (dataframe["atr"] < 0.005)  # Low ATR indicates low volatility
-            ),
-            ["exit_long", "exit_tag"],
-        ] = (1, "exit_long")
+def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    """
+    Refined exit conditions to reduce false exits and hold positions during minor pullbacks.
+    """
 
-        # Bearish exit conditions
-        dataframe.loc[
-            (
-                (dataframe["adx"] < 20)  # Weakening trend
-                | (qtpylib.crossed_above(dataframe["short"], dataframe["long"]))
-                | (dataframe["close"] > dataframe["bb_middleband"])  # Price rises above middle BB
-                | (dataframe["rsi"] > 50)  # RSI rises above 50
-                | (dataframe["atr"] < 0.005)  # Low ATR indicates low volatility
-            ),
-            ["exit_short", "exit_tag"],
-        ] = (1, "exit_short")
+    # 1. Trend Continuation Exit - Only exit if trend weakens significantly
+    dataframe['ema_short'] = ta.EMA(dataframe['close'], timeperiod=50)
+    dataframe['ema_long'] = ta.EMA(dataframe['close'], timeperiod=200)
 
-        return dataframe
+    # 2. Use a threshold on ADX to determine if the trend is still strong
+    dataframe['trend_strength'] = dataframe['adx'] > 20
+
+    # 3. ATR-based Exit - Only exit if the price moves significantly against the position
+    dataframe['atr_threshold'] = dataframe['atr'] * 1.5
+
+    # 4. Time Buffer - Introduce a delay to prevent premature exits
+    dataframe['exit_buffer'] = dataframe['close'].rolling(window=3).min()
+
+    # Bullish exit conditions
+    dataframe.loc[
+        (
+            (dataframe['trend_strength'] == False)  # Weakening trend
+            & (dataframe['close'] < dataframe['ema_short'])  # Price drops below short EMA
+            & (dataframe['close'] < dataframe['ema_long'])  # Price drops below long EMA
+            & (dataframe['close'] < dataframe['bb_middleband'])  # Price below middle BB
+            & (dataframe['close'] < dataframe['exit_buffer'])  # Price remains below buffer
+            & (dataframe['close'] < (dataframe['close'].shift(1) - dataframe['atr_threshold']))  # Significant move against position
+            & (dataframe['volume'] < dataframe['volume_mean_fast'])  # Low volume indicating weak move
+        ),
+        ['exit_long', 'exit_tag']
+    ] = (1, 'trend_weakening_long')
+
+    # Bearish exit conditions
+    dataframe.loc[
+        (
+            (dataframe['trend_strength'] == False)  # Weakening trend
+            & (dataframe['close'] > dataframe['ema_short'])  # Price rises above short EMA
+            & (dataframe['close'] > dataframe['ema_long'])  # Price rises above long EMA
+            & (dataframe['close'] > dataframe['bb_middleband'])  # Price above middle BB
+            & (dataframe['close'] > dataframe['exit_buffer'])  # Price remains above buffer
+            & (dataframe['close'] > (dataframe['close'].shift(1) + dataframe['atr_threshold']))  # Significant move against position
+            & (dataframe['volume'] < dataframe['volume_mean_fast'])  # Low volume indicating weak move
+        ),
+        ['exit_short', 'exit_tag']
+    ] = (1, 'trend_weakening_short')
+
+    return dataframe
+
 
     def custom_stoploss(self, pair: str, trade: Trade, current_time: datetime, current_rate: float,
                         current_profit: float, **kwargs) -> float:
