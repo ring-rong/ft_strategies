@@ -40,7 +40,7 @@ Summary:
 | Rejected Signals| 90        |
 | Ninja Score     | 61        |
 """
-class RingRong15m(IStrategy):
+class RingRong(IStrategy):
     timeframe = "15m"
     can_short: bool = True
 
