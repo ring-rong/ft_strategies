@@ -1,3 +1,4 @@
+from typing import Optional  # Add this line
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 import numpy as np
 import talib.abstract as ta
@@ -5,6 +6,7 @@ from freqtrade.strategy import IStrategy, DecimalParameter, IntParameter
 from pandas import DataFrame, Series
 from datetime import datetime, timedelta
 from freqtrade.persistence import Trade
+
 
 class ClucHAnix_hhll_Futures(IStrategy):
     INTERFACE_VERSION = 3
