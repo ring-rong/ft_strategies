@@ -4,7 +4,7 @@ import talib.abstract as ta
 import time
 import logging
 
-from freqtrade.strategy.interface import IStrategy
+from freqtrade.strategy.interface import IStrategy, merge_informative_pair
 from freqtrade.strategy import merge_informative_pair, DecimalParameter, stoploss_from_open, RealParameter
 from pandas import DataFrame, Series
 from datetime import datetime, timedelta, timezone
@@ -160,66 +160,59 @@ class ClucHAnix_hhll_Futures(IStrategy):
         dataframe['ha_close'] = heikinashi['close']
         dataframe['ha_high'] = heikinashi['high']
         dataframe['ha_low'] = heikinashi['low']
-
+    
         # Set Up Bollinger Bands
         mid, lower = bollinger_bands(ha_typical_price(dataframe), window_size=40, num_of_std=2)
-        dataframe['lower'] = lower
-        dataframe['mid'] = mid
-        
-        dataframe['bbdelta'] = (mid - dataframe['lower']).abs()
+        dataframe['bb_lowerband'] = lower
+        dataframe['bb_middleband'] = mid
+        dataframe['bbdelta'] = (mid - lower).abs()
         dataframe['closedelta'] = (dataframe['ha_close'] - dataframe['ha_close'].shift()).abs()
         dataframe['tail'] = (dataframe['ha_close'] - dataframe['ha_low']).abs()
-
-        dataframe['bb_lowerband'] = dataframe['lower']
-        dataframe['bb_middleband'] = dataframe['mid']
-
+    
         # BB 20
         bollinger2 = qtpylib.bollinger_bands(qtpylib.typical_price(dataframe), window=20, stds=2)
         dataframe['bb_lowerband2'] = bollinger2['lower']
         dataframe['bb_middleband2'] = bollinger2['mid']
         dataframe['bb_upperband2'] = bollinger2['upper']
-
+    
+        # EMA
         dataframe['ema_fast'] = ta.EMA(dataframe['ha_close'], timeperiod=3)
         dataframe['ema_slow'] = ta.EMA(dataframe['ha_close'], timeperiod=50)
         dataframe['volume_mean_slow'] = dataframe['volume'].rolling(window=30).mean()
-        
+    
         # ROCR
         dataframe['rocr'] = ta.ROCR(dataframe['ha_close'], timeperiod=28)
-
-        # hh48
+    
+        # High and Low Differences
         dataframe['hh_48'] = ta.MAX(dataframe['high'], 48)
         dataframe['hh_48_diff'] = (dataframe['hh_48'] - dataframe['close']) / dataframe['hh_48'] * 100
-    
-        # ll48
         dataframe['ll_48'] = ta.MIN(dataframe['low'], 48)
         dataframe['ll_48_diff'] = (dataframe['close'] - dataframe['ll_48']) / dataframe['ll_48'] * 100
-
-        # Fisher
-        rsi = ta.RSI(dataframe, timeperiod=14)
+    
+        # Fisher Transform
+        rsi = ta.RSI(dataframe['ha_close'], timeperiod=14)
         dataframe["fisher"] = 0.1 * (rsi - 50)
-
+    
         # EMA of VWMA Oscillator
         dataframe['ema_vwma_osc_32'] = ema_vwma_osc(dataframe, 32)
         dataframe['ema_vwma_osc_64'] = ema_vwma_osc(dataframe, 64)
-
+    
         # CMF
         dataframe['cmf'] = chaikin_money_flow(dataframe, 20)
-
-        # 1h tf
+    
+        # 1h tf Informative Dataframe
         inf_tf = '1h'
         informative = self.dp.get_pair_dataframe(pair=metadata['pair'], timeframe=inf_tf)
-
         inf_heikinashi = qtpylib.heikinashi(informative)
         informative['rocr'] = ta.ROCR(inf_heikinashi['close'], timeperiod=168)
-
         informative['hl_pct_change_48'] = range_percent_change(informative, 'HL', 48)
         informative['hl_pct_change_36'] = range_percent_change(informative, 'HL', 36)
         informative['hl_pct_change_24'] = range_percent_change(informative, 'HL', 24)
-
-        # CMF
         informative['cmf'] = chaikin_money_flow(informative, 20)
+    
+        # Merge informative data with main dataframe
         dataframe = merge_informative_pair(dataframe, informative, self.timeframe, inf_tf, ffill=True)
-
+    
         return dataframe
     def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe.loc[
