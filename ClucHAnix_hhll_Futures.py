@@ -85,12 +85,12 @@ class ClucHAnix_hhll_Futures(IStrategy):
     startup_candle_count = 168
 
     process_only_new_candles = True
-    order_types = {
-        'buy': 'market',
-        'sell': 'market',
-        'stoploss': 'market',
-        'stoploss_on_exchange': True,
-    }
+    # order_types = {
+    #     'buy': 'market',
+    #     'sell': 'market',
+    #     'stoploss': 'market',
+    #     'stoploss_on_exchange': True,
+    # }
 
     # buy params
     is_optimize_clucHA = False
