@@ -78,7 +78,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
 
     # Futures trading options
     margin_mode = 'isolated' # Isolated margin mode
-    leverage = 5 # 5x leverage
+    leverage = 10 # 10x leverage
 
     # Timeframe and startup candle count
     timeframe = '15m'
@@ -121,6 +121,12 @@ class ClucHAnix_hhll_Futures(IStrategy):
     pPF_2 = DecimalParameter(0.040, 0.100, default=0.080, decimals=3, space='sell', load=True, optimize = is_optimize_trailing)
     pSL_2 = DecimalParameter(0.020, 0.070, default=0.040, decimals=3, space='sell', load=True, optimize = is_optimize_trailing)
 
+    def leverage(self, pair: str, current_time: datetime) -> float:
+        """
+        Return the leverage to be used for a specific pair.
+        """
+        return self.leverage  # Use the leverage defined in the strategy
+    
     def informative_pairs(self):
         pairs = self.dp.current_whitelist()
         informative_pairs = [(pair, '1h') for pair in pairs]
