@@ -23,7 +23,7 @@ def ha_typical_price(bars):
     return Series(index=bars.index, data=res)
 
 
-class ClucHAnix_hhll_Futures(IStrategy):
+class ClucHAnix_hhll_Futures2(IStrategy):
     """
     Futures strategy based on the ClucHAnix_hhll strategy.
     """
@@ -366,7 +366,7 @@ def chaikin_money_flow(dataframe, n=20, fillna=False) -> Series:
     if fillna:
         cmf = cmf.replace([np.inf, -np.inf], np.nan).fillna(0)
     return Series(cmf, name='cmf')
-class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
+class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures2):
     # Original idea by @MukavaValkku, code by @tirail and @stash86, futures adaptation by Assistant
     #
     # This class is designed to inherit from yours and starts trailing buy with your buy signals
