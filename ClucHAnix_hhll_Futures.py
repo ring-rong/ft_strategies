@@ -86,7 +86,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
     startup_candle_count = 168
 
     process_only_new_candles = True
-        order_types = {
+    order_types = {
         'buy': 'market',
         'sell': 'market',
         'stoploss': 'market',
@@ -332,7 +332,7 @@ def chaikin_money_flow(dataframe, n=20, fillna=False) -> Series:
     if fillna:
         cmf = cmf.replace([np.inf, -np.inf], np.nan).fillna(0)
     return Series(cmf, name='cmf')
-class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll):
+class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
     # Original idea by @MukavaValkku, code by @tirail and @stash86, futures adaptation by Assistant
     #
     # This class is designed to inherit from yours and starts trailing buy with your buy signals
