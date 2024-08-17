@@ -80,7 +80,6 @@ class ClucHAnix_hhll_Futures(IStrategy):
     # Futures trading options
     margin_mode = 'isolated' # Isolated margin mode
     leverage = 5 # 5x leverage
-    order_types['stoploss_on_exchange'] = True # Required for futures
 
     # Timeframe and startup candle count
     timeframe = '5m'
@@ -154,7 +153,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
             return -0.99
     
         return stoploss_from_open(sl_profit, current_profit)
-            def populate_indicators(self, dataframe: DataFrame, meta dict) -> DataFrame:
+    def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         # Heikin Ashi Candles
         heikinashi = qtpylib.heikinashi(dataframe)
         dataframe['ha_open'] = heikinashi['open']
@@ -222,7 +221,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
         dataframe = merge_informative_pair(dataframe, informative, self.timeframe, inf_tf, ffill=True)
 
         return dataframe
-    def populate_buy_trend(self, dataframe: DataFrame, meta dict) -> DataFrame:
+    def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe.loc[
             (
                 (dataframe['rocr_1h'].gt(self.rocr_1h.value))
@@ -257,7 +256,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
         ] = 1
         return dataframe
 
-    def populate_sell_trend(self, dataframe: DataFrame, meta dict) -> DataFrame:
+    def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe.loc[
             (
                 (
@@ -454,7 +453,7 @@ class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll):
     # end of trailing buy parameters
     # -----------------------------------------------------
 
-    def populate_indicators(self, dataframe: DataFrame, meta dict) -> DataFrame:
+    def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe = super().populate_indicators(dataframe, metadata)
         self.trailing_buy(metadata['pair'])
         return dataframe
@@ -532,7 +531,7 @@ class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll):
         
         return val
 
-    def populate_buy_trend(self, dataframe: DataFrame, meta dict) -> DataFrame:
+    def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe = super().populate_buy_trend(dataframe, metadata)
 
         if self.trailing_buy_order_enabled and self.config['runmode'].value in ('live', 'dry_run'):
