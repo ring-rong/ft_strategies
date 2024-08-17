@@ -81,7 +81,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
     leverage = 5 # 5x leverage
 
     # Timeframe and startup candle count
-    timeframe = '5m'
+    timeframe = '15m'
     startup_candle_count = 168
 
     process_only_new_candles = True
