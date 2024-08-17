@@ -309,7 +309,13 @@ class ClucHAnix_hhll_Futures(IStrategy):
             ),
             'sell'
         ] = 1
-        return dataframe
+        return 
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        return self.populate_buy_trend(dataframe, metadata)
+
+    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        return self.populate_sell_trend(dataframe, metadata)
+    
         # Volume Weighted Moving Average
 def vwma(dataframe: DataFrame, length: int = 10):
     """Indicator: Volume Weighted Moving Average (VWMA)"""
