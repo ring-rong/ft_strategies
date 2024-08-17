@@ -4,7 +4,7 @@ import talib.abstract as ta
 import time
 import logging
 
-from freqtrade.strategy.interface import IStrategy, merge_informative_pair
+from freqtrade.strategy.interface import IStrategy
 from freqtrade.strategy import merge_informative_pair, DecimalParameter, stoploss_from_open, RealParameter
 from pandas import DataFrame, Series
 from datetime import datetime, timedelta, timezone
