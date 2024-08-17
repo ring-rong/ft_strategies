@@ -76,8 +76,6 @@ class ClucHAnix_hhll_Futures(IStrategy):
     trailing_stop_positive_offset = 0.012
     trailing_only_offset_is_reached = False
 
-    # Futures trading options
-    margin_mode = 'isolated' # Isolated margin mode
     leverage = 10 # 10x leverage
 
     # Timeframe and startup candle count
