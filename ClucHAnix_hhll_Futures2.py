@@ -302,14 +302,14 @@ class ClucHAnix_hhll_Futures2(IStrategy):
                 )
                 |
                 (
-                    (dataframe['close'] > (dataframe['ema_fast'] * self.high_offset_2.value))
+                    (dataframe['close'] > (dataframe['ema_fast'] * self.high_offset_2.value))  # Access .value
                     &
-                    (dataframe['close'].shift(1) > (dataframe['ema_fast'] * self.high_offset))
+                    (dataframe['close'].shift(1) > (dataframe['ema_fast'] * self.high_offset.value))  # Access .value
                 )
             ),
             'sell'
         ] = 1
-        return 
+        return dataframe
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         return self.populate_buy_trend(dataframe, metadata)
 
