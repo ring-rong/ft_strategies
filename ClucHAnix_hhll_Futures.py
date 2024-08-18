@@ -76,7 +76,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
     trailing_stop_positive_offset = 0.012
     trailing_only_offset_is_reached = False
 
-    leverage = 10 # 10x leverage
+    leverage = 10.0 # 10x leverage
 
     # Timeframe and startup candle count
     timeframe = '15m'
