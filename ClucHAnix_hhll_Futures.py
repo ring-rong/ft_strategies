@@ -289,6 +289,41 @@ class ClucHAnix_hhll_Futures(IStrategy):
         return dataframe
 
     def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    dataframe.loc[
+        (
+            (dataframe['rocr_1h'].lt(self.rocr_1h.value))  # Inverse of the buy condition
+            &
+            (
+                (
+                    (dataframe['upper'].shift().lt(0))  # Inverse of lower > 0
+                    &
+                    (dataframe['bbdelta'].lt(dataframe['ha_close'] * self.bbdelta_close.value))  # Inverse of bbdelta > ha_close * threshold
+                    &
+                    (dataframe['closedelta'].lt(dataframe['ha_close'] * self.closedelta_close.value))  # Inverse of closedelta > ha_close * threshold
+                    &
+                    (dataframe['tail'].gt(dataframe['bbdelta'] * self.bbdelta_tail.value))  # Inverse of tail < bbdelta * threshold
+                    &
+                    (dataframe['ha_close'].gt(dataframe['upper'].shift()))  # Inverse of ha_close < lower.shift()
+                    &
+                    (dataframe['ha_close'].ge(dataframe['ha_close'].shift()))  # Inverse of ha_close <= ha_close.shift()
+                )
+                |
+                (
+                    (dataframe['ha_close'] > dataframe['ema_slow'])  # Inverse of ha_close < ema_slow
+                    &
+                    (dataframe['ha_close'] > self.close_bbupper.value * dataframe['bb_upperband'])  # Inverse of ha_close < close_bblower * bb_lowerband
+                )
+            )
+            &
+            (dataframe['hh_48_diff'] < self.sell_hh_diff_48.value)  # Inverse of hh_48_diff > threshold
+            &
+            (dataframe['ll_48_diff'] < self.sell_ll_diff_48.value)  # Inverse of ll_48_diff > threshold
+        ),
+        'sell'
+    ] = 1
+    return dataframe
+
+    def populate_short_entry(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe.loc[
             (
                 (
@@ -314,6 +349,34 @@ class ClucHAnix_hhll_Futures(IStrategy):
             'sell'
         ] = 1
         return dataframe
+
+    def populate_exit_short(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    dataframe.loc[
+        (
+            (
+                (dataframe['fisher'] < self.exit_fisher.value)  # Inverse of the sell condition
+                &
+                (dataframe['ha_low'].ge(dataframe['ha_low'].shift(1)))  # Inverse of ha_high decreasing
+                &
+                (dataframe['ha_low'].shift(1).ge(dataframe['ha_low'].shift(2)))  # Same inverse logic applied
+                &
+                (dataframe['ha_close'].ge(dataframe['ha_close'].shift(1)))  # Inverse of ha_close decreasing
+                &
+                (dataframe['ema_fast'] < dataframe['ha_close'])  # Inverse of ema_fast > ha_close
+                &
+                ((dataframe['ha_close'] * self.exit_bbmiddle_close.value) < dataframe['bb_middleband'])  # Inverse logic applied
+            )
+            |
+            (
+                (dataframe['close'] < (dataframe['ema_fast'] * self.low_offset_2.value))  # Inverse of the sell condition
+                &
+                (dataframe['close'].shift(1) < (dataframe['ema_fast'] * self.low_offset.value))  # Inverse of the sell condition
+            )
+        ),
+        'exit_short'
+    ] = 1
+    return dataframe
+    
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         return self.populate_buy_trend(dataframe, metadata)
 
@@ -371,14 +434,6 @@ def chaikin_money_flow(dataframe, n=20, fillna=False) -> Series:
         cmf = cmf.replace([np.inf, -np.inf], np.nan).fillna(0)
     return Series(cmf, name='cmf')
 class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
-    # Original idea by @MukavaValkku, code by @tirail and @stash86, futures adaptation by Assistant
-    #
-    # This class is designed to inherit from yours and starts trailing buy with your buy signals
-    # Trailing buy starts at any buy signal and will move to next candles if the trailing still active
-    # Trailing buy stops  with BUY if : price decreases and rises again more than trailing_buy_offset
-    # Trailing buy stops with NO BUY : current price is > initial price * (1 +  trailing_buy_max) OR custom_sell tag
-    # IT IS NOT COMPATIBLE WITH BACKTEST/HYPEROPT
-    #
 
     process_only_new_candles = True
 
