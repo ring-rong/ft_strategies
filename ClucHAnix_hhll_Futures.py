@@ -130,11 +130,13 @@ class ClucHAnix_hhll_Futures(IStrategy):
         informative_pairs = [(pair, '1h') for pair in pairs]
         return informative_pairs
 
-    def custom_stoploss(self, pair: str, trade: 'Trade', current_time: datetime, current_rate: float, current_profit: float, **kwargs) -> float:
+    # come from BB_RPB_TSL
+    def custom_stoploss(self, pair: str, trade: 'Trade', current_time: datetime,
+                        current_rate: float, current_profit: float, **kwargs) -> float:
+
         # hard stoploss profit
         PF_1 = self.pPF_1.value
         SL_1 = self.pSL_1.value
-
         PF_2 = self.pPF_2.value
         SL_2 = self.pSL_2.value
 
@@ -154,8 +156,131 @@ class ClucHAnix_hhll_Futures(IStrategy):
         # Only for hyperopt invalid return
         if sl_profit >= current_profit:
             return -0.99
-    
+
         return stoploss_from_open(sl_profit, current_profit)
+
+    ## Confirm Entry
+    def confirm_trade_entry(self, pair: str, order_type: str, amount: float, rate: float, time_in_force: str, **kwargs) -> bool:
+
+        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+
+        max_slip = self.max_slip.value
+
+        if(len(dataframe) < 1):
+            return False
+
+        dataframe = dataframe.iloc[-1].squeeze()
+        if ((rate > dataframe['close'])) :
+
+            slippage = ( (rate / dataframe['close']) - 1 ) * 100
+
+            if slippage < max_slip:
+                return True
+            else:
+                return False
+
+        return True
+
+    def custom_sell(self, pair: str, trade: 'Trade', current_time: 'datetime', current_rate: float,
+                    current_profit: float, **kwargs):
+
+        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+
+        last_candle = dataframe.iloc[-1]
+        previous_candle_1 = dataframe.iloc[-2]
+        previous_candle_2 = dataframe.iloc[-3]
+
+        max_profit = ((trade.max_rate - trade.open_rate) / trade.open_rate)
+        max_loss = ((trade.open_rate - trade.min_rate) / trade.min_rate)
+
+        # stoploss - deadfish
+        if (    (current_profit < -0.063)
+                and (last_candle['close'] < last_candle['ema_200'])
+                and (last_candle['bb_width'] < 0.043)
+                and (last_candle['close'] > last_candle['bb_middleband2'] * 0.954)
+                and (last_candle['volume_mean_12'] < last_candle['volume_mean_24'] * 2.37)
+            ):
+            return 'sell_stoploss_deadfish'
+
+        # stoploss - pump
+        if (last_candle['hl_pct_change_48_1h'] > 0.95):
+            if (
+                    (-0.04 > current_profit > -0.08)
+                    and (max_profit < 0.005)
+                    and (max_loss < 0.08)
+                    and (last_candle['close'] < last_candle['ema_200'])
+                    and (last_candle['sma_200_dec_20'])
+                    and (last_candle['ema_vwma_osc_32'] < 0.0)
+                    and (last_candle['ema_vwma_osc_64'] < 0.0)
+                    and (last_candle['ema_vwma_osc_96'] < 0.0)
+                    and (last_candle['cmf'] < -0.25)
+                    and (last_candle['cmf_1h'] < -0.0)
+            ):
+                return 'sell_stoploss_p_48_1_1'
+            elif (
+                    (-0.04 > current_profit > -0.08)
+                    and (max_profit < 0.01)
+                    and (max_loss < 0.08)
+                    and (last_candle['close'] < last_candle['ema_200'])
+                    and (last_candle['sma_200_dec_20'])
+                    and (last_candle['ema_vwma_osc_32'] < 0.0)
+                    and (last_candle['ema_vwma_osc_64'] < 0.0)
+                    and (last_candle['ema_vwma_osc_96'] < 0.0)
+                    and (last_candle['cmf'] < -0.25)
+                    and (last_candle['cmf_1h'] < -0.0)
+            ):
+                return 'sell_stoploss_p_48_1_2'
+
+        if (last_candle['hl_pct_change_36_1h'] > 0.7):
+            if (
+                    (-0.04 > current_profit > -0.08)
+                    and (max_loss < 0.08)
+                    and (max_profit > (current_profit + 0.1))
+                    and (last_candle['close'] < last_candle['ema_200'])
+                    and (last_candle['sma_200_dec_20'])
+                    and (last_candle['sma_200_dec_20_1h'])
+                    and (last_candle['ema_vwma_osc_32'] < 0.0)
+                    and (last_candle['ema_vwma_osc_64'] < 0.0)
+                    and (last_candle['ema_vwma_osc_96'] < 0.0)
+                    and (last_candle['cmf'] < -0.25)
+                    and (last_candle['cmf_1h'] < -0.0)
+            ):
+                return 'sell_stoploss_p_36_1_1'
+
+        if (last_candle['hl_pct_change_36_1h'] > 0.5):
+            if (
+                    (-0.05 > current_profit > -0.08)
+                    and (max_loss < 0.08)
+                    and (max_profit > (current_profit + 0.1))
+                    and (last_candle['close'] < last_candle['ema_200'])
+                    and (last_candle['sma_200_dec_20'])
+                    and (last_candle['sma_200_dec_20_1h'])
+                    and (last_candle['ema_vwma_osc_32'] < 0.0)
+                    and (last_candle['ema_vwma_osc_64'] < 0.0)
+                    and (last_candle['ema_vwma_osc_96'] < 0.0)
+                    and (last_candle['cmf'] < -0.25)
+                    and (last_candle['cmf_1h'] < -0.0)
+                    and (last_candle['rsi'] < 40.0)
+            ):
+                return 'sell_stoploss_p_36_2_1'
+
+        if (last_candle['hl_pct_change_24_1h'] > 0.6):
+            if (
+                    (-0.04 > current_profit > -0.08)
+                    and (max_loss < 0.08)
+                    and (last_candle['close'] < last_candle['ema_200'])
+                    and (last_candle['sma_200_dec_20'])
+                    and (last_candle['sma_200_dec_20_1h'])
+                    and (last_candle['ema_vwma_osc_32'] < 0.0)
+                    and (last_candle['ema_vwma_osc_64'] < 0.0)
+                    and (last_candle['ema_vwma_osc_96'] < 0.0)
+                    and (last_candle['cmf'] < -0.25)
+                    and (last_candle['cmf_1h'] < -0.0)
+            ):
+                return 'sell_stoploss_p_24_1_1'
+
+        return None
+
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         # # Heikin Ashi Candles
         heikinashi = qtpylib.heikinashi(dataframe)
@@ -253,128 +378,65 @@ class ClucHAnix_hhll_Futures(IStrategy):
         dataframe = merge_informative_pair(dataframe, informative, self.timeframe, inf_tf, ffill=True)
 
         return dataframe
-    def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        dataframe.loc[
-            (
-                (dataframe['rocr_1h'].gt(self.rocr_1h.value))
-                &
-                (
-                    (
-                        (dataframe['lower'].shift().gt(0))
-                        &
-                        (dataframe['bbdelta'].gt(dataframe['ha_close'] * self.bbdelta_close.value))
-                        &
-                        (dataframe['closedelta'].gt(dataframe['ha_close'] * self.closedelta_close.value))
-                        &
-                        (dataframe['tail'].lt(dataframe['bbdelta'] * self.bbdelta_tail.value))
-                        &
-                        (dataframe['ha_close'].lt(dataframe['lower'].shift()))
-                        &
-                        (dataframe['ha_close'].le(dataframe['ha_close'].shift()))
-                    )
-                    |
-                    (
-                        (dataframe['ha_close'] < dataframe['ema_slow'])
-                        &
-                        (dataframe['ha_close'] < self.close_bblower.value * dataframe['bb_lowerband'])
-                    )
-                )
-                &
-                (dataframe['hh_48_diff'] > self.buy_hh_diff_48.value)
-                &
-                (dataframe['ll_48_diff'] > self.buy_ll_diff_48.value)
-            ),
-            'buy'
-        ] = 1
-        return dataframe
 
-def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-    dataframe.loc[
-        (
-            (dataframe['rocr_1h'].lt(self.rocr_1h.value))  # Inverse of the buy condition
+    def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+
+        dataframe.loc[
+            ( dataframe['rocr_1h'].gt(self.rocr_1h.value) )
             &
-            (
-                (
-                    (dataframe['bb_upperband2'].shift().lt(0))  # Inverse of lower > 0
-                    &
-                    (dataframe['bbdelta'].lt(dataframe['ha_close'] * self.bbdelta_close.value))  # Inverse of bbdelta > ha_close * threshold
-                    &
-                    (dataframe['closedelta'].lt(dataframe['ha_close'] * self.closedelta_close.value))  # Inverse of closedelta > ha_close * threshold
-                    &
-                    (dataframe['tail'].gt(dataframe['bbdelta'] * self.bbdelta_tail.value))  # Inverse of tail < bbdelta * threshold
-                    &
-                    (dataframe['ha_close'].gt(dataframe['bb_upperband2'].shift()))  # Inverse of ha_close < lower.shift()
-                    &
-                    (dataframe['ha_close'].ge(dataframe['ha_close'].shift()))  # Inverse of ha_close <= ha_close.shift()
+            (   (
+                    (dataframe['lower'].shift().gt(0)) &
+                    (dataframe['bbdelta'].gt(dataframe['ha_close'] * self.bbdelta_close.value)) &
+                    (dataframe['closedelta'].gt(dataframe['ha_close'] * self.closedelta_close.value)) &
+                    (dataframe['tail'].lt(dataframe['bbdelta'] * self.bbdelta_tail.value)) &
+                    (dataframe['ha_close'].lt(dataframe['lower'].shift())) &
+                    (dataframe['ha_close'].le(dataframe['ha_close'].shift()))
                 )
                 |
                 (
-                    (dataframe['ha_close'] > dataframe['ema_slow'])  # Inverse of ha_close < ema_slow
-                    &
-                    (dataframe['ha_close'] > self.close_bbupper.value * dataframe['bb_upperband2'])  # Inverse of ha_close < close_bblower * bb_lowerband
+                    (dataframe['ha_close'] < dataframe['ema_slow']) &
+                    (dataframe['ha_close'] < self.close_bblower.value * dataframe['bb_lowerband'])
                 )
             )
             &
-            (dataframe['hh_48_diff'] < self.sell_hh_diff_48.value)  # Inverse of hh_48_diff > threshold
+            (dataframe['hh_48_diff'] > self.buy_hh_diff_48.value)
             &
-            (dataframe['ll_48_diff'] < self.sell_ll_diff_48.value)  # Inverse of ll_48_diff > threshold
-        ),
-        'sell'
-    ] = 1
-    return dataframe
+            (dataframe['ll_48_diff'] > self.buy_ll_diff_48.value)
+        ,'buy'] = 1
 
-    def populate_short_entry(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        return dataframe
+
+    def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+
         dataframe.loc[
-            (
-                (
-                    (dataframe['fisher'] > self.sell_fisher.value)
-                    &
-                    (dataframe['ha_high'].le(dataframe['ha_high'].shift(1)))
-                    &
-                    (dataframe['ha_high'].shift(1).le(dataframe['ha_high'].shift(2)))
-                    &
-                    (dataframe['ha_close'].le(dataframe['ha_close'].shift(1)))
-                    &
-                    (dataframe['ema_fast'] > dataframe['ha_close'])
-                    &
+            (   (
+                    (dataframe['fisher'] > self.sell_fisher.value) &
+                    (dataframe['ha_high'].le(dataframe['ha_high'].shift(1))) &
+                    (dataframe['ha_high'].shift(1).le(dataframe['ha_high'].shift(2))) &
+                    (dataframe['ha_close'].le(dataframe['ha_close'].shift(1))) &
+                    (dataframe['ema_fast'] > dataframe['ha_close']) &
                     ((dataframe['ha_close'] * self.sell_bbmiddle_close.value) > dataframe['bb_middleband'])
                 )
                 |
                 (
-                    (dataframe['close'] > (dataframe['ema_fast'] * self.high_offset_2.value))  # Access .value
-                    &
-                    (dataframe['close'].shift(1) > (dataframe['ema_fast'] * self.high_offset.value))  # Access .value
+                    (dataframe['close'] > dataframe['sma_9']) &
+                    (dataframe['close'] > (dataframe['ema_24'] * self.high_offset_2.value)) &
+                    (dataframe['rsi'] > 50) &
+                    (dataframe['rsi_fast'] > dataframe['rsi_slow'])
                 )
-            ),
-            'sell'
-        ] = 1
-        return dataframe
+                |
+                (
+                    (dataframe['sma_9'] > (dataframe['sma_9'].shift(1) + dataframe['sma_9'].shift(1) * 0.005 )) &
+                    (dataframe['close'] < dataframe['hma_50']) &
+                    (dataframe['close'] > (dataframe['ema_24'] * self.high_offset.value)) &
+                    (dataframe['rsi_fast'] > dataframe['rsi_slow'])
+                )
+            )
+            &
+            (dataframe['volume'] > 0)
 
-    def populate_exit_short(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        dataframe.loc[
-        (
-            (
-                (dataframe['fisher'] < self.exit_fisher.value)  # Inverse of the sell condition
-                &
-                (dataframe['ha_low'].ge(dataframe['ha_low'].shift(1)))  # Inverse of ha_high decreasing
-                &
-                (dataframe['ha_low'].shift(1).ge(dataframe['ha_low'].shift(2)))  # Same inverse logic applied
-                &
-                (dataframe['ha_close'].ge(dataframe['ha_close'].shift(1)))  # Inverse of ha_close decreasing
-                &
-                (dataframe['ema_fast'] < dataframe['ha_close'])  # Inverse of ema_fast > ha_close
-                &
-                ((dataframe['ha_close'] * self.exit_bbmiddle_close.value) < dataframe['bb_middleband'])  # Inverse logic applied
-            )
-            |
-            (
-                (dataframe['close'] < (dataframe['ema_fast'] * self.low_offset_2.value))  # Inverse of the sell condition
-                &
-                (dataframe['close'].shift(1) < (dataframe['ema_fast'] * self.low_offset.value))  # Inverse of the sell condition
-            )
-        ),
-        'exit_short'
-    ] = 1
+        ,'sell'] = 1
+
         return dataframe
     
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
