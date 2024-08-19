@@ -295,7 +295,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
             &
             (
                 (
-                    (dataframe['upper'].shift().lt(0))  # Inverse of lower > 0
+                    (dataframe['bb_upperband2'].shift().lt(0))  # Inverse of lower > 0
                     &
                     (dataframe['bbdelta'].lt(dataframe['ha_close'] * self.bbdelta_close.value))  # Inverse of bbdelta > ha_close * threshold
                     &
