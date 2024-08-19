@@ -253,7 +253,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
         dataframe = merge_informative_pair(dataframe, informative, self.timeframe, inf_tf, ffill=True)
 
         return dataframe
-    def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe.loc[
             (
                 (dataframe['rocr_1h'].gt(self.rocr_1h.value))
@@ -288,7 +288,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
         ] = 1
         return dataframe
 
-def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
     dataframe.loc[
         (
             (dataframe['rocr_1h'].lt(self.rocr_1h.value))  # Inverse of the buy condition
@@ -377,11 +377,11 @@ def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame
     ] = 1
         return dataframe
     
-    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        return self.populate_buy_trend(dataframe, metadata)
+    # def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    #     return self.populate_buy_trend(dataframe, metadata)
 
-    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        return self.populate_sell_trend(dataframe, metadata)
+    # def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    #     return self.populate_sell_trend(dataframe, metadata)
     
         # Volume Weighted Moving Average
 def vwma(dataframe: DataFrame, length: int = 10):
