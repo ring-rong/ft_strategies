@@ -55,6 +55,8 @@ class ClucHAnix_hhll_Futures(IStrategy):
         "high_offset_2": 1.211,
         "sell_bbmiddle_close": 0.97286,
         "sell_fisher": 0.48492,
+        # leverage set
+        "leverage_num": 10,
     }
 
     # ROI table:
@@ -75,8 +77,6 @@ class ClucHAnix_hhll_Futures(IStrategy):
     trailing_stop_positive = 0.001
     trailing_stop_positive_offset = 0.012
     trailing_only_offset_is_reached = False
-
-    leverage = 10.0 # 10x leverage
 
     # Timeframe and startup candle count
     timeframe = '15m'
@@ -112,18 +112,21 @@ class ClucHAnix_hhll_Futures(IStrategy):
     sell_bbmiddle_close = RealParameter(0.97, 1.1, default=1.07634, space='sell', optimize = is_optimize_sell)
     high_offset          = DecimalParameter(0.90, 1.2, default=sell_params['high_offset'], space='sell', optimize = is_optimize_sell)
     high_offset_2        = DecimalParameter(0.90, 1.5, default=sell_params['high_offset_2'], space='sell', optimize = is_optimize_sell)
+    
 
     is_optimize_trailing = False
     pPF_1 = DecimalParameter(0.011, 0.020, default=0.016, decimals=3, space='sell', load=True, optimize = is_optimize_trailing)
     pSL_1 = DecimalParameter(0.011, 0.020, default=0.011, decimals=3, space='sell', load=True, optimize = is_optimize_trailing)
     pPF_2 = DecimalParameter(0.040, 0.100, default=0.080, decimals=3, space='sell', load=True, optimize = is_optimize_trailing)
     pSL_2 = DecimalParameter(0.020, 0.070, default=0.040, decimals=3, space='sell', load=True, optimize = is_optimize_trailing)
+    leverage_optimize = False
+    leverage_num = IntParameter(low=1, high=5, default=1, space='sell', optimize=leverage_optimize)
 
-    def leverage(self, pair: str, current_time: datetime) -> float:
-        """
-        Return the leverage to be used for a specific pair.
-        """
-        return self.leverage  # Use the leverage defined in the strategy
+    def leverage(self, pair: str, current_time: datetime, current_rate: float,
+                 proposed_leverage: float, max_leverage: float, side: str,
+                 **kwargs) -> float:
+
+        return self.leverage_num.value
     
     def informative_pairs(self):
         pairs = self.dp.current_whitelist()
