@@ -288,8 +288,8 @@ class ClucHAnix_hhll_Futures(IStrategy):
         ] = 1
         return dataframe
 
-    def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        dataframe.loc[
+def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    dataframe.loc[
         (
             (dataframe['rocr_1h'].lt(self.rocr_1h.value))  # Inverse of the buy condition
             &
@@ -303,7 +303,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
                     &
                     (dataframe['tail'].gt(dataframe['bbdelta'] * self.bbdelta_tail.value))  # Inverse of tail < bbdelta * threshold
                     &
-                    (dataframe['ha_close'].gt(dataframe['upper'].shift()))  # Inverse of ha_close < lower.shift()
+                    (dataframe['ha_close'].gt(dataframe['bb_upperband2'].shift()))  # Inverse of ha_close < lower.shift()
                     &
                     (dataframe['ha_close'].ge(dataframe['ha_close'].shift()))  # Inverse of ha_close <= ha_close.shift()
                 )
@@ -311,7 +311,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
                 (
                     (dataframe['ha_close'] > dataframe['ema_slow'])  # Inverse of ha_close < ema_slow
                     &
-                    (dataframe['ha_close'] > self.close_bbupper.value * dataframe['bb_upperband2'])  # Invers6e of ha_close < close_bblower * bb_lowerband
+                    (dataframe['ha_close'] > self.close_bbupper.value * dataframe['bb_upperband2'])  # Inverse of ha_close < close_bblower * bb_lowerband
                 )
             )
             &
@@ -321,7 +321,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
         ),
         'sell'
     ] = 1
-        return dataframe
+    return dataframe
 
     def populate_short_entry(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe.loc[
