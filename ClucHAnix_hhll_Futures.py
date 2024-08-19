@@ -311,7 +311,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
                 (
                     (dataframe['ha_close'] > dataframe['ema_slow'])  # Inverse of ha_close < ema_slow
                     &
-                    (dataframe['ha_close'] > self.close_bbupper.value * dataframe['bb_upperband2'])  # Inverse of ha_close < close_bblower * bb_lowerband
+                    (dataframe['ha_close'] > self.close_bbupper.value * dataframe['bb_upperband2'])  # Invers6e of ha_close < close_bblower * bb_lowerband
                 )
             )
             &
