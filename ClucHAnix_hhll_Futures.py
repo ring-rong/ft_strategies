@@ -433,215 +433,191 @@ def chaikin_money_flow(dataframe, n=20, fillna=False) -> Series:
     if fillna:
         cmf = cmf.replace([np.inf, -np.inf], np.nan).fillna(0)
     return Series(cmf, name='cmf')
-class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
+class ClucHAnix_hhll_TB_Futures_LongShort(ClucHAnix_hhll_Futures):
 
     process_only_new_candles = True
 
     custom_info_trail_buy = dict()
+    custom_info_trail_sell = dict()
 
-    # Trailing buy parameters
+    # Trailing buy parameters (Long)
     trailing_buy_order_enabled = True
     trailing_expire_seconds = 1800
 
-    # If the current candle goes above min_uptrend_trailing_profit % before trailing_expire_seconds_uptrend seconds, buy the contract 
     trailing_buy_uptrend_enabled = False
     trailing_expire_seconds_uptrend = 90
     min_uptrend_trailing_profit = 0.02
 
     debug_mode = True
-    trailing_buy_max_stop = 0.02  # stop trailing buy if current_price > starting_price * (1+trailing_buy_max_stop)
-    trailing_buy_max_buy = 0.000  # buy if price between uplimit (=min of serie (current_price * (1 + trailing_buy_offset())) and (start_price * 1+trailing_buy_max_buy))
+    trailing_buy_max_stop = 0.02
+    trailing_buy_max_buy = 0.000
+
+    # Trailing sell parameters (Short)
+    trailing_sell_order_enabled = True
+    trailing_sell_expire_seconds = 1800
+
+    trailing_sell_downtrend_enabled = False
+    trailing_sell_expire_seconds_downtrend = 90
+    min_downtrend_trailing_profit = 0.02
+
+    trailing_sell_max_stop = 0.02
+    trailing_sell_max_sell = 0.000
 
     init_trailing_dict = {
-        'trailing_buy_order_started': False,
-        'trailing_buy_order_uplimit': 0,
+        'trailing_order_started': False,
+        'trailing_order_uplimit': 0,
         'start_trailing_price': 0,
-        'buy_tag': None,
+        'trade_tag': None,
         'start_trailing_time': None,
         'offset': 0,
         'allow_trailing': False,
     }
 
-    def trailing_buy(self, pair, reinit=False):
-        # returns trailing buy info for pair (init if necessary)
-        if not pair in self.custom_info_trail_buy:
-            self.custom_info_trail_buy[pair] = dict()
-        if (reinit or not 'trailing_buy' in self.custom_info_trail_buy[pair]):
-            self.custom_info_trail_buy[pair]['trailing_buy'] = self.init_trailing_dict.copy()
-        return self.custom_info_trail_buy[pair]['trailing_buy']
+    def trailing_order(self, pair, reinit=False, order_type='buy'):
+        custom_info = self.custom_info_trail_buy if order_type == 'buy' else self.custom_info_trail_sell
+        if not pair in custom_info:
+            custom_info[pair] = dict()
+        if reinit or not f'trailing_{order_type}' in custom_info[pair]:
+            custom_info[pair][f'trailing_{order_type}'] = self.init_trailing_dict.copy()
+        return custom_info[pair][f'trailing_{order_type}']
 
-    def trailing_buy_info(self, pair: str, current_price: float):
-        # current_time live, dry run
+    def trailing_order_info(self, pair: str, current_price: float, order_type='buy'):
         current_time = datetime.now(timezone.utc)
         if not self.debug_mode:
             return
-        trailing_buy = self.trailing_buy(pair)
+        trailing_order = self.trailing_order(pair, order_type=order_type)
 
         duration = 0
         try:
-            duration = (current_time - trailing_buy['start_trailing_time'])
+            duration = (current_time - trailing_order['start_trailing_time'])
         except TypeError:
             duration = 0
         finally:
             logger.info(
                 f"pair: {pair} : "
-                f"start: {trailing_buy['start_trailing_price']:.4f}, "
+                f"start: {trailing_order['start_trailing_price']:.4f}, "
                 f"duration: {duration}, "
                 f"current: {current_price:.4f}, "
-                f"uplimit: {trailing_buy['trailing_buy_order_uplimit']:.4f}, "
-                f"profit: {self.current_trailing_profit_ratio(pair, current_price)*100:.2f}%, "
-                f"offset: {trailing_buy['offset']}")
+                f"uplimit: {trailing_order['trailing_order_uplimit']:.4f}, "
+                f"profit: {self.current_trailing_profit_ratio(pair, current_price, order_type)*100:.2f}%, "
+                f"offset: {trailing_order['offset']}"
+            )
 
-    def current_trailing_profit_ratio(self, pair: str, current_price: float) -> float:
-        trailing_buy = self.trailing_buy(pair)
-        if trailing_buy['trailing_buy_order_started']:
-            return (trailing_buy['start_trailing_price'] - current_price) / trailing_buy['start_trailing_price']
+    def current_trailing_profit_ratio(self, pair: str, current_price: float, order_type='buy') -> float:
+        trailing_order = self.trailing_order(pair, order_type=order_type)
+        if trailing_order['trailing_order_started']:
+            return (trailing_order['start_trailing_price'] - current_price) / trailing_order['start_trailing_price'] if order_type == 'buy' else (current_price - trailing_order['start_trailing_price']) / trailing_order['start_trailing_price']
         else:
             return 0
 
-    def trailing_buy_offset(self, dataframe, pair: str, current_price: float):
-        # return rebound limit before a buy in % of initial price, function of current price
-        # return None to stop trailing buy (will start again at next buy signal)
-        # return 'forcebuy' to force immediate buy
-        # (example with 0.5%. initial price : 100 (uplimit is 100.5), 2nd price : 99 (no buy, uplimit updated to 99.5), 3price 98 (no buy uplimit updated to 98.5), 4th price 99 -> BUY
-        current_trailing_profit_ratio = self.current_trailing_profit_ratio(pair, current_price)
+    def trailing_order_offset(self, dataframe, pair: str, current_price: float, order_type='buy'):
+        current_trailing_profit_ratio = self.current_trailing_profit_ratio(pair, current_price, order_type)
         default_offset = 0.005
 
-        trailing_buy = self.trailing_buy(pair)
-        if not trailing_buy['trailing_buy_order_started']:
+        trailing_order = self.trailing_order(pair, order_type=order_type)
+        if not trailing_order['trailing_order_started']:
             return default_offset
 
-        # example with duration and indicators
-        # dry run, live only
         last_candle = dataframe.iloc[-1]
         current_time = datetime.now(timezone.utc)
-        trailing_duration = current_time - trailing_buy['start_trailing_time']
-        if trailing_duration.total_seconds() > self.trailing_expire_seconds:
-            if ((current_trailing_profit_ratio > 0) and (last_candle['buy'] == 1)):
-                # more than 1h, price under first signal, buy signal still active -> buy
-                return 'forcebuy'
+        trailing_duration = current_time - trailing_order['start_trailing_time']
+        if trailing_duration.total_seconds() > (self.trailing_expire_seconds if order_type == 'buy' else self.trailing_sell_expire_seconds):
+            if ((current_trailing_profit_ratio > 0 and order_type == 'buy') or (current_trailing_profit_ratio < 0 and order_type == 'sell')) and (last_candle[f'{order_type}'] == 1):
+                return 'force' + order_type
             else:
-                # wait for next signal
                 return None
-        elif (self.trailing_buy_uptrend_enabled and (trailing_duration.total_seconds() < self.trailing_expire_seconds_uptrend) and (current_trailing_profit_ratio < (-1 * self.min_uptrend_trailing_profit))):
-            # less than 90s and price is rising, buy
-            return 'forcebuy'
+        elif (self.trailing_buy_uptrend_enabled if order_type == 'buy' else self.trailing_sell_downtrend_enabled) and (trailing_duration.total_seconds() < (self.trailing_expire_seconds_uptrend if order_type == 'buy' else self.trailing_sell_expire_seconds_downtrend)) and (current_trailing_profit_ratio < (-1 * (self.min_uptrend_trailing_profit if order_type == 'buy' else self.min_downtrend_trailing_profit))):
+            return 'force' + order_type
 
-        if current_trailing_profit_ratio < 0:
-            # current price is higher than initial price
+        if (order_type == 'buy' and current_trailing_profit_ratio < 0) or (order_type == 'sell' and current_trailing_profit_ratio > 0):
             return default_offset
 
-        trailing_buy_offset = {
+        trailing_offset_map = {
             0.06: 0.02,
             0.03: 0.01,
             0: default_offset,
         }
 
-        for key in trailing_buy_offset:
-            if current_trailing_profit_ratio > key:
-                return trailing_buy_offset[key]
+        for key in trailing_offset_map:
+            if current_trailing_profit_ratio > key if order_type == 'buy' else current_trailing_profit_ratio < key:
+                return trailing_offset_map[key]
 
         return default_offset
 
-    # end of trailing buy parameters
-    # -----------------------------------------------------
-
+    # Indicator population should account for both long and short trends
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe = super().populate_indicators(dataframe, metadata)
-        self.trailing_buy(metadata['pair'])
+        self.trailing_order(metadata['pair'], order_type='buy')
+        self.trailing_order(metadata['pair'], order_type='sell')
         return dataframe
-    
+
     def confirm_trade_entry(self, pair: str, order_type: str, amount: float, rate: float, time_in_force: str, **kwargs) -> bool:
         val = super().confirm_trade_entry(pair, order_type, amount, rate, time_in_force, **kwargs)
 
         if val:
-            if self.trailing_buy_order_enabled and self.config['runmode'].value in ('live', 'dry_run'):
-                val = False
-                dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
-                if(len(dataframe) >= 1):
-                    last_candle = dataframe.iloc[-1].squeeze()
-                    current_price = rate
-                    trailing_buy = self.trailing_buy(pair)
-                    trailing_buy_offset = self.trailing_buy_offset(dataframe, pair, current_price)
+            if order_type == 'buy' and self.trailing_buy_order_enabled and self.config['runmode'].value in ('live', 'dry_run'):
+                val = self.handle_trailing_entry(pair, rate, dataframe, 'buy')
 
-                    if trailing_buy['allow_trailing']:
-                        if (not trailing_buy['trailing_buy_order_started'] and (last_candle['buy'] == 1)):
-                            # start trailing buy
-                            trailing_buy['trailing_buy_order_started'] = True
-                            trailing_buy['trailing_buy_order_uplimit'] = last_candle['close'] 
-                            trailing_buy['start_trailing_price'] = last_candle['close']
-                            trailing_buy['buy_tag'] = last_candle['buy_tag'] 
-                            trailing_buy['start_trailing_time'] = datetime.now(timezone.utc)
-                            trailing_buy['offset'] = 0
+            elif order_type == 'sell' and self.trailing_sell_order_enabled and self.config['runmode'].value in ('live', 'dry_run'):
+                val = self.handle_trailing_entry(pair, rate, dataframe, 'sell')
 
-                            self.trailing_buy_info(pair, current_price)
-                            logger.info(f'start trailing buy for {pair} at {last_candle["close"]}')
+        return val
 
-                        elif trailing_buy['trailing_buy_order_started']: 
-                            if trailing_buy_offset == 'forcebuy':
-                                # buy in custom conditions
-                                val = True
-                                ratio = "%.2f" % ((self.current_trailing_profit_ratio(pair, current_price)) * 100)
-                                self.trailing_buy_info(pair, current_price)
-                                logger.info(f"price OK for {pair} ({ratio} %, {current_price}), order may not be triggered if margin not sufficient")
+    def handle_trailing_entry(self, pair, rate, dataframe, order_type):
+        val = False
+        trailing_order = self.trailing_order(pair, order_type=order_type)
+        trailing_offset = self.trailing_order_offset(dataframe, pair, rate, order_type)
 
-                            elif trailing_buy_offset is None:
-                                # stop trailing buy custom conditions
-                                self.trailing_buy(pair, reinit=True)
-                                logger.info(f'STOP trailing buy for {pair} because "trailing buy offset" returned None')
+        if trailing_order['allow_trailing']:
+            if not trailing_order['trailing_order_started'] and dataframe.iloc[-1].squeeze()[order_type] == 1:
+                trailing_order['trailing_order_started'] = True
+                trailing_order['trailing_order_uplimit'] = dataframe.iloc[-1].squeeze()['close']
+                trailing_order['start_trailing_price'] = dataframe.iloc[-1].squeeze()['close']
+                trailing_order['trade_tag'] = dataframe.iloc[-1].squeeze().get(f'{order_type}_tag', f'{order_type} signal')
+                trailing_order['start_trailing_time'] = datetime.now(timezone.utc)
+                trailing_order['offset'] = 0
 
-                            elif current_price < trailing_buy['trailing_buy_order_uplimit']:
-                                # update uplimit
-                                old_uplimit = trailing_buy["trailing_buy_order_uplimit"]
-                                self.custom_info_trail_buy[pair]['trailing_buy']['trailing_buy_order_uplimit'] = min(current_price * (1 + trailing_buy_offset), self.custom_info_trail_buy[pair]['trailing_buy']['trailing_buy_order_uplimit'])
-                                self.custom_info_trail_buy[pair]['trailing_buy']['offset'] = trailing_buy_offset
-                                self.trailing_buy_info(pair, current_price)
-                                logger.info(f'update trailing buy for {pair} at {old_uplimit} -> {self.custom_info_trail_buy[pair]["trailing_buy"]["trailing_buy_order_uplimit"]}')
-                            elif current_price < (trailing_buy['start_trailing_price'] * (1 + self.trailing_buy_max_buy)):
-                                # buy ! current price > uplimit && lower thant starting price 
-                                val = True
-                                ratio = "%.2f" % ((self.current_trailing_profit_ratio(pair, current_price)) * 100)
-                                self.trailing_buy_info(pair, current_price)
-                                logger.info(f"current price ({current_price}) > uplimit ({trailing_buy['trailing_buy_order_uplimit']}) and lower than starting price ({(trailing_buy['start_trailing_price'] * (1 + self.trailing_buy_max_buy))}). OK for {pair} ({ratio} %), order may not be triggered if margin not sufficient")
+                self.trailing_order_info(pair, rate, order_type)
+                logger.info(f'Start trailing {order_type} for {pair} at {trailing_order["start_trailing_price"]}')
 
-                            elif current_price > (trailing_buy['start_trailing_price'] * (1 + self.trailing_buy_max_stop)):
-                                # stop trailing buy because price is too high
-                                self.trailing_buy(pair, reinit=True)
-                                self.trailing_buy_info(pair, current_price)
-                                logger.info(f'STOP trailing buy for {pair} because of the price is higher than starting price * {1 + self.trailing_buy_max_stop}')
-                            else:
-                                # uplimit > current_price > max_price, continue trailing and wait for the price to go down
-                                self.trailing_buy_info(pair, current_price)  
-                                logger.info(f'price too high for {pair} !')
+            elif trailing_order['trailing_order_started']:
+                if trailing_offset == f'force{order_type}':
+                    val = True
+                    self.trailing_order_info(pair, rate, order_type)
+                    logger.info(f"Price OK for {pair}, {order_type} order may be triggered if margin is sufficient")
 
-                    else:
-                        logger.info(f"Wait for next buy signal for {pair}")
+                elif trailing_offset is None:
+                    self.trailing_order(pair, reinit=True, order_type=order_type)
+                    logger.info(f'STOP trailing {order_type} for {pair} because "trailing order offset" returned None')
 
-                if (val == True):
-                    self.trailing_buy_info(pair, rate)
-                    self.trailing_buy(pair, reinit=True)
-                    logger.info(f'STOP trailing buy for {pair} because I buy it')
-        
+                elif rate < trailing_order['trailing_order_uplimit'] if order_type == 'buy' else rate > trailing_order['trailing_order_uplimit']:
+                    old_uplimit = trailing_order["trailing_order_uplimit"]
+                    self.custom_info_trail_buy[pair][f'trailing_{order_type}']['trailing_order_uplimit'] = min(rate * (1 + trailing_offset), trailing_order['trailing_order_uplimit'])
+                    trailing_order['offset'] = trailing_offset
+                    self.trailing_order_info(pair, rate, order_type)
+                    logger.info(f'Update trailing {order_type} for {pair}: {old_uplimit} -> {trailing_order["trailing_order_uplimit"]}')
+
+                elif rate < trailing_order['start_trailing_price'] * (1 + self.trailing_buy_max_buy if order_type == 'buy' else self.trailing_sell_max_sell):
+                    val = True
+                    self.trailing_order_info(pair, rate, order_type)
+                    logger.info(f"Current price ({rate}) > uplimit ({trailing_order['trailing_order_uplimit']}) and lower than starting price. {order_type.capitalize()} order for {pair} may be triggered")
+
+                elif rate > trailing_order['start_trailing_price'] * (1 + self.trailing_buy_max_stop if order_type == 'buy' else self.trailing_sell_max_stop):
+                    self.trailing_order(pair, reinit=True, order_type=order_type)
+                    self.trailing_order_info(pair, rate, order_type)
+                    logger.info(f'STOP trailing {order_type} for {pair} because price exceeded stop limit')
+                else:
+                    self.trailing_order_info(pair, rate, order_type)
+                    logger.info(f'Price too high for {pair}!')
+
         return val
 
     def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe = super().populate_buy_trend(dataframe, metadata)
+        self.handle_trailing_entry(metadata['pair'], dataframe.iloc[-1].squeeze()['close'], dataframe, 'buy')
+        return dataframe
 
-        if self.trailing_buy_order_enabled and self.config['runmode'].value in ('live', 'dry_run'):
-            last_candle = dataframe.iloc[-1].squeeze()
-            trailing_buy = self.trailing_buy(metadata['pair'])
-            if (last_candle['buy'] == 1):
-                if not trailing_buy['trailing_buy_order_started']:
-                    open_trades = Trade.get_trades([Trade.pair == metadata['pair'], Trade.is_open.is_(True), ]).all()
-                    if not open_trades:
-                        logger.info(f"Set 'allow_trailing' to True for {metadata['pair']} to start trailing!!!")
-                        trailing_buy['allow_trailing'] = True
-                        initial_buy_tag = last_candle['buy_tag'] if 'buy_tag' in last_candle else 'buy signal'
-                        dataframe.loc[:, 'buy_tag'] = f"{initial_buy_tag} (start trail price {last_candle['close']})"
-            else:
-                if (trailing_buy['trailing_buy_order_started'] == True):
-                    logger.info(f"Continue trailing for {metadata['pair']}. Manually trigger buy signal!!")
-                    dataframe.loc[:,'buy'] = 1
-                    dataframe.loc[:, 'buy_tag'] = trailing_buy['buy_tag']
-                    
+    def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        dataframe = super().populate_sell_trend(dataframe, metadata)
+        self.handle_trailing_entry(metadata['pair'], dataframe.iloc[-1].squeeze()['close'], dataframe, 'sell')
         return dataframe
