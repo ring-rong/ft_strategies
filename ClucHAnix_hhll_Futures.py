@@ -289,7 +289,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
         return dataframe
 
     def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-    dataframe.loc[
+        dataframe.loc[
         (
             (dataframe['rocr_1h'].lt(self.rocr_1h.value))  # Inverse of the buy condition
             &
@@ -321,7 +321,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
         ),
         'sell'
     ] = 1
-    return dataframe
+        return dataframe
 
     def populate_short_entry(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe.loc[
@@ -351,7 +351,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
         return dataframe
 
     def populate_exit_short(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-    dataframe.loc[
+        dataframe.loc[
         (
             (
                 (dataframe['fisher'] < self.exit_fisher.value)  # Inverse of the sell condition
@@ -375,7 +375,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
         ),
         'exit_short'
     ] = 1
-    return dataframe
+        return dataframe
     
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         return self.populate_buy_trend(dataframe, metadata)
