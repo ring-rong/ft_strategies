@@ -27,7 +27,7 @@ class ClucHAnix_hhll_Futures(IStrategy):
     """
     Futures strategy based on the ClucHAnix_hhll strategy.
     """
-    can_short: bool = True
+    can_short = True
     #hypered params
     buy_params = {
         ##
