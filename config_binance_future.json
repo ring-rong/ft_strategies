@@ -35,81 +35,85 @@
   },
   "exchange": {
     "name": "binance",
-    "key": "",
-    "secret": "",
+    "key": "qOlvZ8PSdo4GsGF9WXrMdAFlPYoi5svGSKZwyKGC2WPQObvuEOZIkM8JWI2BKlZT",
+    "secret": "dCYCiBv8IF5pt2jgaCi9m8Kq4XvRJjB1WD6aoZotAMkqcRbV6ScGo4r0EQ1ktvTD",
     "ccxt_config": {
       "enableRateLimit": true
     },
     "ccxt_async_config": {
       "enableRateLimit": true,
       "rateLimit": 50
-    },
+    }
   },
   "pairlists": [
-//        {
-//            "method": "VolumePairList",
-//            "number_assets": 150,
-//            "sort_key": "quoteVolume",
-//            "refresh_period": 1800
-//        },
-//        {"method": "AgeFilter", "min_days_listed": 7},
-//        {
-//            "method": "VolatilityFilter",
-//            "lookback_days": 3,
-//            "min_volatility": 0.02,
-//            "max_volatility": 0.75,
-//            "refresh_period": 1800
-//        },
-//        {
-//        "method": "RangeStabilityFilter",
-//        "lookback_days": 3,
-//        "min_rate_of_change": 0.05,
-//        "refresh_period": 1800
-//        },
-//        {
-//        "method": "PerformanceFilter"
-//        }
-     {
-      "method": "StaticPairList"
+    {
+      "method": "VolumePairList",
+      "number_assets": 80,
+      "sort_key": "quoteVolume",
+      "refresh_period": 1800
+    },
+    { "method": "FullTradesFilter" },
+    { "method": "AgeFilter", "min_days_listed": 30 },
+    {
+      "method": "PriceFilter",
+      "low_price_ratio": 0.003
+    },
+    {
+      "method": "SpreadFilter",
+      "max_spread_ratio": 0.005
+    },
+    {
+      "method": "RangeStabilityFilter",
+      "lookback_days": 3,
+      "min_rate_of_change": 0.03,
+      "refresh_period": 1800
     }
-    ],
-  "edge": {
-    "enabled": false,
-    "process_throttle_secs": 3600,
-    "calculate_since_number_of_days": 14,
-    "allowed_risk": 0.01,
-    "stoploss_range_min": -0.01,
-    "stoploss_range_max": -0.1,
-    "stoploss_range_step": -0.01,
-    "minimum_winrate": 0.60,
-    "minimum_expectancy": 0.20,
-    "min_trade_number": 10,
-    "max_trade_duration_minute": 1440,
-    "remove_pumps": false
-  },
-  "telegram": {
-    "enabled": true,
-    "token": "",
-    "chat_id": "",
-    "keyboard": [
-      [
-        "/daily",
-        "/stats",
-        "/balance",
-        "/profit"
+  ],
+    "telegram": {
+      "enabled": true,
+      "token": "6173054253:AAGZ1El5Ok_1HMhnsey2SEHwzlVKDGwnV4I",
+      "chat_id": "330644191",
+      "keyboard": [
+        [
+          "/daily",
+          "/stats",
+          "/balance",
+          "/profit"
+        ],
+        [
+          "/status table",
+          "/performance",
+          "/whitelist"
+        ],
+        [
+          "/reload_config",
+          "/count",
+          "/logs"
+        ]
       ],
-      [
-        "/status table",
-        "/performance",
-        "/whitelist"
-      ],
-      [
-        "/reload_config",
-        "/count",
-        "/logs"
-      ]
-    ]
-  },
+      "notification_settings": {
+        "status": "on",
+        "warning": "on",
+        "startup": "on",
+        "entry": "on",
+        "entry_fill": "on",
+        "exit": {
+          "roi": "off",
+          "emergency_exit": "off",
+          "force_exit": "off",
+          "exit_signal": "on",
+          "trailing_stop_loss": "on",
+          "stop_loss": "on",
+          "stoploss_on_exchange": "off",
+          "custom_exit": "on"
+        },
+        "exit_fill": "on",
+        "entry_cancel": "on",
+        "exit_cancel": "on",
+        "protection_trigger": "off",
+        "protection_trigger_global": "on",
+        "show_candle": "off"
+      }, 
   "api_server": {
     "enabled": false,
     "listen_ip_address": "0.0.0.0",
@@ -127,3 +131,5 @@
     "process_throttle_secs": 5
   }
 }
+}
+
