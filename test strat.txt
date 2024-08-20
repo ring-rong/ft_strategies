@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/freqtrade-config",
-  "max_open_trades": 6,
+  "max_open_trades": 99,
   "stake_currency": "USDT",
   "stake_amount": "unlimited",
   "tradable_balance_ratio": 0.80,
@@ -9,7 +9,7 @@
   "grinding_enable": true,
   "dry_run_wallet": 10000,
   "cancel_open_orders_on_exit": false,
-  "timeframe": "5m",
+  "timeframe": "15m",
   "stoploss": -0.10,
   "unfilledtimeout": {
     "entry": 10,
@@ -20,10 +20,26 @@
   "pairlists": [
     {
       "method": "VolumePairList",
-      "number_assets": 50,
+      "number_assets": 80,
       "sort_key": "quoteVolume",
-      "refresh_period": 180000
-    }
+      "refresh_period": 1800
+    },
+    { "method": "FullTradesFilter" },
+    { "method": "AgeFilter", "min_days_listed": 30 },
+    {
+      "method": "PriceFilter",
+      "low_price_ratio": 0.003
+    },
+    {
+      "method": "SpreadFilter",
+      "max_spread_ratio": 0.005
+    },
+    {
+      "method": "RangeStabilityFilter",
+      "lookback_days": 3,
+      "min_rate_of_change": 0.03,
+      "refresh_period": 1800
+    },
   ],
   "exchange": {
     "name": "binance",
@@ -33,12 +49,17 @@
       "enableRateLimit": true,
       "rateLimit": 1200,
       "options": {
-        "defaultType": "future"
+        "defaultType": "future",
+        "leverage": 10
       }
     },
     "ccxt_async_config": {
       "enableRateLimit": true,
-      "rateLimit": 1200
+      "rateLimit": 1200,
+      "options": {
+              "defaultType": "future",
+        "leverage": 10
+      }
     }
   },
   "telegram": {
@@ -97,7 +118,7 @@
   "bot_name": "freqtrade",
   "db_url": "sqlite:///tradesv3.sqlite",
   "initial_state": "running",
-  "force_entry_enable": false,
+  "force_entry_enable": true,
   "internals": {
     "process_throttle_secs": 5,
     "heartbeat_interval": 60
@@ -108,7 +129,6 @@
   "add_config_files": [],
   "trading_mode": "futures",
   "margin_mode": "isolated",
-  "futures_leverage": 5,
   "position_adjustment_enable": true,
   "use_exit_signal": true,
   "exit_profit_only": false,
