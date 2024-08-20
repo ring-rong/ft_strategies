@@ -399,9 +399,10 @@ class BinHV27_combined(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        dataframe.loc[(), ['exit_short', 'exit_tag']] = (0, 'no_short_exit')
-        dataframe.loc[(), ['exit_long', 'exit_tag']] = (0, 'no_long_exit')
+        dataframe.loc[:, ['exit_short', 'exit_tag']] = (0, 'no_short_exit')
+        dataframe.loc[:, ['exit_long', 'exit_tag']] = (0, 'no_long_exit')
         return dataframe
+
 
     def custom_exit(self, pair: str, trade: Trade, current_time: 'datetime', current_rate: float,
                     current_profit: float, **kwargs):
