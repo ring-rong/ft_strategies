@@ -122,8 +122,8 @@
     "verbosity": "info",
     "jwt_secret_key": "somethingrandom",
     "CORS_origins": [],
-    "username": "",
-    "password": ""
+    "username": "ringrong",
+    "password": "ringrong"
   },
   "bot_name": "freqtrade",
   "initial_state": "running",
