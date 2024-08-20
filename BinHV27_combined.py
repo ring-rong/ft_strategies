@@ -62,7 +62,7 @@ class BinHV27_combined(IStrategy):
         "pSL_2_short": 0.157,
 
         # leverage set
-        "leverage_num": 1,
+        "leverage_num": 10,
 
         # sell params
         'exit_long_emarsi1': 75,
