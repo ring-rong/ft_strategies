@@ -69,51 +69,52 @@
       "refresh_period": 1800
     }
   ],
-    "telegram": {
-      "enabled": true,
-      "token": "6173054253:AAGZ1El5Ok_1HMhnsey2SEHwzlVKDGwnV4I",
-      "chat_id": "330644191",
-      "keyboard": [
-        [
-          "/daily",
-          "/stats",
-          "/balance",
-          "/profit"
-        ],
-        [
-          "/status table",
-          "/performance",
-          "/whitelist"
-        ],
-        [
-          "/reload_config",
-          "/count",
-          "/logs"
-        ]
+  "telegram": {
+    "enabled": true,
+    "token": "6173054253:AAGZ1El5Ok_1HMhnsey2SEHwzlVKDGwnV4I",
+    "chat_id": "330644191",
+    "keyboard": [
+      [
+        "/daily",
+        "/stats",
+        "/balance",
+        "/profit"
       ],
-      "notification_settings": {
-        "status": "on",
-        "warning": "on",
-        "startup": "on",
-        "entry": "on",
-        "entry_fill": "on",
-        "exit": {
-          "roi": "off",
-          "emergency_exit": "off",
-          "force_exit": "off",
-          "exit_signal": "on",
-          "trailing_stop_loss": "on",
-          "stop_loss": "on",
-          "stoploss_on_exchange": "off",
-          "custom_exit": "on"
-        },
-        "exit_fill": "on",
-        "entry_cancel": "on",
-        "exit_cancel": "on",
-        "protection_trigger": "off",
-        "protection_trigger_global": "on",
-        "show_candle": "off"
-      }, 
+      [
+        "/status table",
+        "/performance",
+        "/whitelist"
+      ],
+      [
+        "/reload_config",
+        "/count",
+        "/logs"
+      ]
+    ],
+    "notification_settings": {
+      "status": "on",
+      "warning": "on",
+      "startup": "on",
+      "entry": "on",
+      "entry_fill": "on",
+      "exit": {
+        "roi": "off",
+        "emergency_exit": "off",
+        "force_exit": "off",
+        "exit_signal": "on",
+        "trailing_stop_loss": "on",
+        "stop_loss": "on",
+        "stoploss_on_exchange": "off",
+        "custom_exit": "on"
+      },
+      "exit_fill": "on",
+      "entry_cancel": "on",
+      "exit_cancel": "on",
+      "protection_trigger": "off",
+      "protection_trigger_global": "on",
+      "show_candle": "off"
+    }
+  },
   "api_server": {
     "enabled": false,
     "listen_ip_address": "0.0.0.0",
@@ -131,5 +132,3 @@
     "process_throttle_secs": 5
   }
 }
-}
-
