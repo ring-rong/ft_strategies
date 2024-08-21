@@ -508,6 +508,7 @@ def chaikin_money_flow(dataframe, n=20, fillna=False) -> Series:
     if fillna:
         cmf = cmf.replace([np.inf, -np.inf], np.nan).fillna(0)
     return Series(cmf, name='cmf')
+    
 class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
 
     process_only_new_candles = True
