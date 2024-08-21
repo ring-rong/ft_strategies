@@ -748,6 +748,8 @@ class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
             last_candle = dataframe.iloc[-1].squeeze()
             trailing_short = self.trailing_short(metadata['pair'])
             if last_candle['enter_short'] == 1:
+                logger.info(f"Attempting to enter short for {metadata['pair']} at {last_candle['close']} with indicators: "
+                            f"rocr_1h: {last_candle['rocr_1h']}, bbdelta: {last_candle['bbdelta']}, fisher: {last_candle['fisher']}")
                 if not trailing_short['trailing_order_started']:
                     open_trades = Trade.get_trades([Trade.pair == metadata['pair'], Trade.is_open.is_(True), ]).all()
                     if not open_trades:
