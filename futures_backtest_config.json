@@ -195,5 +195,6 @@
   "force_entry_enable": false,
   "internals": {
     "process_throttle_secs": 5
-  }
+  },
+  "user_data_dir": "/home/ubuntu/ft_userdata/user_data"
 }
