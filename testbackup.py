@@ -11,7 +11,7 @@ from statistics import mean
 from freqtrade.persistence.trade_model import Trade
 from freqtrade.strategy.interface import IStrategy
 
-class TaSearchLevelG15m(IStrategy):
+class RingRong(IStrategy):
     can_short: bool = True
 
     def populate_indicators(self, df: pd.DataFrame, metadata: dict) -> pd.DataFrame:
