@@ -43,12 +43,7 @@
     "ccxt_async_config": {
       "enableRateLimit": true,
       "rateLimit": 50
-    }
-  },
-// Binance Futures Pairs Available Since 2023
-{
-  "exchange": {
-    "name": "binance",
+    },
     "pair_whitelist": [
       "1000FLOKI/USDT:USDT",
       "1000LUNC/USDT:USDT",
@@ -96,7 +91,7 @@
       "JOE/USDT:USDT",
       "JTO/USDT:USDT",
       "KAS/USDT:USDT",
-     "KEY/USDT:USDT",
+      "KEY/USDT:USDT",
       "LEVER/USDT:USDT",
       "LOOM/USDT:USDT",
       "LQTY/USDT:USDT",
@@ -147,41 +142,19 @@
       "YGG/USDT:USDT"
     ]
   },
-  "pairlists": [{ "method": "StaticPairList" }],
-  "entry_pricing": {
-    "use_order_book": true,
-    "order_book_top": 1,
-    "check_depth_of_market": {
-      "enabled": false,
-      "bids_to_ask_delta": 1
+  "pairlists": [
+    {
+      "method": "StaticPairList"
     }
-  },
-  "exit_pricing": {
-    "use_order_book": true,
-    "order_book_top": 1
-  }
-},
+  ],
   "telegram": {
     "enabled": true,
     "token": "6173054253:AAGZ1El5Ok_1HMhnsey2SEHwzlVKDGwnV4I",
     "chat_id": "330644191",
     "keyboard": [
-      [
-        "/daily",
-        "/stats",
-        "/balance",
-        "/profit"
-      ],
-      [
-        "/status table",
-        "/performance",
-        "/whitelist"
-      ],
-      [
-        "/reload_config",
-        "/count",
-        "/logs"
-      ]
+      ["/daily", "/stats", "/balance", "/profit"],
+      ["/status table", "/performance", "/whitelist"],
+      ["/reload_config", "/count", "/logs"]
     ],
     "notification_settings": {
       "status": "on",
