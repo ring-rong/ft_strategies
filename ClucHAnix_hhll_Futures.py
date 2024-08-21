@@ -407,6 +407,33 @@ class ClucHAnix_hhll_Futures(IStrategy):
 
         return dataframe
 
+    def populate_short_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+
+        dataframe.loc[
+            ( dataframe['rocr_1h'].lt(self.rocr_1h.value) )
+            &
+            (   (
+                    (dataframe['lower'].shift().le(0)) &
+                    (dataframe['bbdelta'].lt(dataframe['ha_close'] * self.bbdelta_close.value)) &
+                    (dataframe['closedelta'].lt(dataframe['ha_close'] * self.closedelta_close.value)) &
+                    (dataframe['tail'].gt(dataframe['bbdelta'] * self.bbdelta_tail.value)) &
+                    (dataframe['ha_close'].gt(dataframe['lower'].shift())) &
+                    (dataframe['ha_close'].ge(dataframe['ha_close'].shift()))
+                )
+                |
+                (
+                    (dataframe['ha_close'] > dataframe['ema_slow']) &
+                    (dataframe['ha_close'] > self.close_bblower.value * dataframe['bb_lowerband'])
+                )
+            )
+            &
+            (dataframe['hh_48_diff'] < self.buy_hh_diff_48.value)
+            &
+            (dataframe['ll_48_diff'] < self.buy_ll_diff_48.value)
+        ,'short'] = 1
+
+        return dataframe
+
     def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
 
         dataframe.loc[
@@ -439,12 +466,50 @@ class ClucHAnix_hhll_Futures(IStrategy):
         ,'sell'] = 1
 
         return dataframe
-    
+
+    def populate_cover_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+
+        dataframe.loc[
+            (   (
+                    (dataframe['fisher'] < self.sell_fisher.value) &
+                    (dataframe['ha_low'].ge(dataframe['ha_low'].shift(1))) &
+                    (dataframe['ha_low'].shift(1).ge(dataframe['ha_low'].shift(2))) &
+                    (dataframe['ha_close'].ge(dataframe['ha_close'].shift(1))) &
+                    (dataframe['ema_fast'] < dataframe['ha_close']) &
+                    ((dataframe['ha_close'] * self.sell_bbmiddle_close.value) < dataframe['bb_middleband'])
+                )
+                |
+                (
+                    (dataframe['close'] < dataframe['sma_9']) &
+                    (dataframe['close'] < (dataframe['ema_24'] * self.high_offset_2.value)) &
+                    (dataframe['rsi'] < 50) &
+                    (dataframe['rsi_fast'] < dataframe['rsi_slow'])
+                )
+                |
+                (
+                    (dataframe['sma_9'] < (dataframe['sma_9'].shift(1) - dataframe['sma_9'].shift(1) * 0.005 )) &
+                    (dataframe['close'] > dataframe['hma_50']) &
+                    (dataframe['close'] < (dataframe['ema_24'] * self.high_offset.value)) &
+                    (dataframe['rsi_fast'] < dataframe['rsi_slow'])
+                )
+            )
+            &
+            (dataframe['volume'] > 0)
+
+        ,'cover'] = 1
+
+        return dataframe
+        
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-         return self.populate_buy_trend(dataframe, metadata)
+        dataframe = self.populate_buy_trend(dataframe, metadata)
+        dataframe = self.populate_short_trend(dataframe, metadata)
+        return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-         return self.populate_sell_trend(dataframe, metadata)
+        dataframe = self.populate_sell_trend(dataframe, metadata)
+        dataframe = self.populate_cover_trend(dataframe, metadata)
+        return dataframe
+
     
         # Volume Weighted Moving Average
 def vwma(dataframe: DataFrame, length: int = 10):
@@ -500,11 +565,17 @@ class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
 
     process_only_new_candles = True
 
+    # Trailing info dictionaries
     custom_info_trail_buy = dict()
+    custom_info_trail_short = dict()
 
     # Trailing buy parameters
     trailing_buy_order_enabled = True
     trailing_expire_seconds = 1800
+
+    # Trailing short parameters
+    trailing_short_order_enabled = True  # Enable trailing shorts
+    trailing_expire_seconds_short = 1800
 
     # If the current candle goes above min_uptrend_trailing_profit % before trailing_expire_seconds_uptrend seconds, buy the contract 
     trailing_buy_uptrend_enabled = False
@@ -516,30 +587,35 @@ class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
     trailing_buy_max_buy = 0.000  # buy if price between uplimit (=min of serie (current_price * (1 + trailing_buy_offset())) and (start_price * 1+trailing_buy_max_buy))
 
     init_trailing_dict = {
-        'trailing_buy_order_started': False,
-        'trailing_buy_order_uplimit': 0,
+        'trailing_order_started': False,
+        'trailing_order_uplimit': 0,
         'start_trailing_price': 0,
-        'buy_tag': None,
+        'tag': None,
         'start_trailing_time': None,
         'offset': 0,
         'allow_trailing': False,
     }
 
     def trailing_buy(self, pair, reinit=False):
-        # returns trailing buy info for pair (init if necessary)
-        if not pair in self.custom_info_trail_buy:
+        if pair not in self.custom_info_trail_buy:
             self.custom_info_trail_buy[pair] = dict()
-        if (reinit or not 'trailing_buy' in self.custom_info_trail_buy[pair]):
+        if reinit or 'trailing_buy' not in self.custom_info_trail_buy[pair]:
             self.custom_info_trail_buy[pair]['trailing_buy'] = self.init_trailing_dict.copy()
         return self.custom_info_trail_buy[pair]['trailing_buy']
 
+    def trailing_short(self, pair, reinit=False):
+        if pair not in self.custom_info_trail_short:
+            self.custom_info_trail_short[pair] = dict()
+        if reinit or 'trailing_short' not in self.custom_info_trail_short[pair]:
+            self.custom_info_trail_short[pair]['trailing_short'] = self.init_trailing_dict.copy()
+        return self.custom_info_trail_short[pair]['trailing_short']
+
     def trailing_buy_info(self, pair: str, current_price: float):
-        # current_time live, dry run
         current_time = datetime.now(timezone.utc)
         if not self.debug_mode:
             return
         trailing_buy = self.trailing_buy(pair)
-
+        
         duration = 0
         try:
             duration = (current_time - trailing_buy['start_trailing_time'])
@@ -551,47 +627,60 @@ class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
                 f"start: {trailing_buy['start_trailing_price']:.4f}, "
                 f"duration: {duration}, "
                 f"current: {current_price:.4f}, "
-                f"uplimit: {trailing_buy['trailing_buy_order_uplimit']:.4f}, "
-                f"profit: {self.current_trailing_profit_ratio(pair, current_price)*100:.2f}%, "
+                f"uplimit: {trailing_buy['trailing_order_uplimit']:.4f}, "
+                f"profit: {self.current_trailing_profit_ratio(pair, current_price, 'buy')*100:.2f}%, "
                 f"offset: {trailing_buy['offset']}")
 
-    def current_trailing_profit_ratio(self, pair: str, current_price: float) -> float:
-        trailing_buy = self.trailing_buy(pair)
-        if trailing_buy['trailing_buy_order_started']:
-            return (trailing_buy['start_trailing_price'] - current_price) / trailing_buy['start_trailing_price']
-        else:
-            return 0
+    def trailing_short_info(self, pair: str, current_price: float):
+        current_time = datetime.now(timezone.utc)
+        if not self.debug_mode:
+            return
+        trailing_short = self.trailing_short(pair)
+        
+        duration = 0
+        try:
+            duration = (current_time - trailing_short['start_trailing_time'])
+        except TypeError:
+            duration = 0
+        finally:
+            logger.info(
+                f"pair: {pair} : "
+                f"start: {trailing_short['start_trailing_price']:.4f}, "
+                f"duration: {duration}, "
+                f"current: {current_price:.4f}, "
+                f"uplimit: {trailing_short['trailing_order_uplimit']:.4f}, "
+                f"profit: {self.current_trailing_profit_ratio(pair, current_price, 'short')*100:.2f}%, "
+                f"offset: {trailing_short['offset']}")
+
+    def current_trailing_profit_ratio(self, pair: str, current_price: float, trade_type: str = 'buy') -> float:
+        if trade_type == 'buy':
+            trailing_order = self.trailing_buy(pair)
+            return (current_price - trailing_order['start_trailing_price']) / trailing_order['start_trailing_price'] if trailing_order['trailing_order_started'] else 0
+        elif trade_type == 'short':
+            trailing_order = self.trailing_short(pair)
+            return (trailing_order['start_trailing_price'] - current_price) / trailing_order['start_trailing_price'] if trailing_order['trailing_order_started'] else 0
 
     def trailing_buy_offset(self, dataframe, pair: str, current_price: float):
-        # return rebound limit before a buy in % of initial price, function of current price
-        # return None to stop trailing buy (will start again at next buy signal)
-        # return 'forcebuy' to force immediate buy
-        # (example with 0.5%. initial price : 100 (uplimit is 100.5), 2nd price : 99 (no buy, uplimit updated to 99.5), 3price 98 (no buy uplimit updated to 98.5), 4th price 99 -> BUY
-        current_trailing_profit_ratio = self.current_trailing_profit_ratio(pair, current_price)
+        # Handle buy trailing
+        current_trailing_profit_ratio = self.current_trailing_profit_ratio(pair, current_price, 'buy')
         default_offset = 0.005
-
         trailing_buy = self.trailing_buy(pair)
-        if not trailing_buy['trailing_buy_order_started']:
+
+        if not trailing_buy['trailing_order_started']:
             return default_offset
 
-        # example with duration and indicators
-        # dry run, live only
         last_candle = dataframe.iloc[-1]
         current_time = datetime.now(timezone.utc)
         trailing_duration = current_time - trailing_buy['start_trailing_time']
         if trailing_duration.total_seconds() > self.trailing_expire_seconds:
-            if ((current_trailing_profit_ratio > 0) and (last_candle['buy'] == 1)):
-                # more than 1h, price under first signal, buy signal still active -> buy
+            if (current_trailing_profit_ratio > 0) and (last_candle['buy'] == 1):
                 return 'forcebuy'
             else:
-                # wait for next signal
                 return None
         elif (self.trailing_buy_uptrend_enabled and (trailing_duration.total_seconds() < self.trailing_expire_seconds_uptrend) and (current_trailing_profit_ratio < (-1 * self.min_uptrend_trailing_profit))):
-            # less than 90s and price is rising, buy
             return 'forcebuy'
 
         if current_trailing_profit_ratio < 0:
-            # current price is higher than initial price
             return default_offset
 
         trailing_buy_offset = {
@@ -603,6 +692,39 @@ class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
         for key in trailing_buy_offset:
             if current_trailing_profit_ratio > key:
                 return trailing_buy_offset[key]
+
+        return default_offset
+
+    def trailing_short_offset(self, dataframe, pair: str, current_price: float):
+        # Handle short trailing
+        current_trailing_profit_ratio = self.current_trailing_profit_ratio(pair, current_price, 'short')
+        default_offset = 0.005
+        trailing_short = self.trailing_short(pair)
+
+        if not trailing_short['trailing_order_started']:
+            return default_offset
+
+        last_candle = dataframe.iloc[-1]
+        current_time = datetime.now(timezone.utc)
+        trailing_duration = current_time - trailing_short['start_trailing_time']
+        if trailing_duration.total_seconds() > self.trailing_expire_seconds_short:
+            if (current_trailing_profit_ratio > 0) and (last_candle['short'] == 1):
+                return 'forceshort'
+            else:
+                return None
+
+        if current_trailing_profit_ratio < 0:
+            return default_offset
+
+        trailing_short_offset = {
+            0.06: 0.02,
+            0.03: 0.01,
+            0: default_offset,
+        }
+
+        for key in trailing_short_offset:
+            if current_trailing_profit_ratio > key:
+                return trailing_short_offset[key]
 
         return default_offset
 
@@ -688,12 +810,17 @@ class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
         return val
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        # Process long entry signals
         dataframe = super().populate_buy_trend(dataframe, metadata)
 
+        # Process short entry signals
+        dataframe = self.populate_short_trend(dataframe, metadata)
+
+        # Trailing logic for long positions
         if self.trailing_buy_order_enabled and self.config['runmode'].value in ('live', 'dry_run'):
             last_candle = dataframe.iloc[-1].squeeze()
             trailing_buy = self.trailing_buy(metadata['pair'])
-            if (last_candle['buy'] == 1):
+            if last_candle['buy'] == 1:
                 if not trailing_buy['trailing_buy_order_started']:
                     open_trades = Trade.get_trades([Trade.pair == metadata['pair'], Trade.is_open.is_(True), ]).all()
                     if not open_trades:
@@ -702,9 +829,28 @@ class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
                         initial_buy_tag = last_candle['buy_tag'] if 'buy_tag' in last_candle else 'buy signal'
                         dataframe.loc[:, 'buy_tag'] = f"{initial_buy_tag} (start trail price {last_candle['close']})"
             else:
-                if (trailing_buy['trailing_buy_order_started'] == True):
+                if trailing_buy['trailing_buy_order_started']:
                     logger.info(f"Continue trailing for {metadata['pair']}. Manually trigger buy signal!!")
                     dataframe.loc[:,'buy'] = 1
                     dataframe.loc[:, 'buy_tag'] = trailing_buy['buy_tag']
-                    
+
+        # Trailing logic for short positions
+        if self.trailing_short_order_enabled and self.config['runmode'].value in ('live', 'dry_run'):
+            last_candle = dataframe.iloc[-1].squeeze()
+            trailing_short = self.trailing_short(metadata['pair'])
+            if last_candle['short'] == 1:
+                if not trailing_short['trailing_short_order_started']:
+                    open_trades = Trade.get_trades([Trade.pair == metadata['pair'], Trade.is_open.is_(True), ]).all()
+                    if not open_trades:
+                        logger.info(f"Set 'allow_trailing_short' to True for {metadata['pair']} to start trailing short!!!")
+                        trailing_short['allow_trailing_short'] = True
+                        initial_short_tag = last_candle['short_tag'] if 'short_tag' in last_candle else 'short signal'
+                        dataframe.loc[:, 'short_tag'] = f"{initial_short_tag} (start trail price {last_candle['close']})"
+            else:
+                if trailing_short['trailing_short_order_started']:
+                    logger.info(f"Continue trailing short for {metadata['pair']}. Manually trigger short signal!!")
+                    dataframe.loc[:, 'short'] = 1
+                    dataframe.loc[:, 'short_tag'] = trailing_short['short_tag']
+
         return dataframe
+
