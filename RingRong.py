@@ -11,8 +11,10 @@ from statistics import mean
 from freqtrade.persistence.trade_model import Trade
 from freqtrade.strategy.interface import IStrategy
 
-class RingRong(IStrategy):
+class RingRong5m(IStrategy):
     can_short: bool = True
+    timeframe = '5m'
+    stoploss = -0.05
 
     def populate_indicators(self, df: pd.DataFrame, metadata: dict) -> pd.DataFrame:
         pd.set_option('display.max_rows', 100000)
