@@ -380,137 +380,84 @@ class ClucHAnix_hhll_Futures(IStrategy):
 
         return dataframe
 
-    def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    
+        # Long entry conditions
         dataframe.loc[
-            ( dataframe['rocr_1h'].gt(self.rocr_1h.value) )
-            &
-            (   (
-                    (dataframe['lower'].shift().gt(0)) &
-                    (dataframe['bbdelta'].gt(dataframe['ha_close'] * self.bbdelta_close.value)) &
-                    (dataframe['closedelta'].gt(dataframe['ha_close'] * self.closedelta_close.value)) &
-                    (dataframe['tail'].lt(dataframe['bbdelta'] * self.bbdelta_tail.value)) &
-                    (dataframe['ha_close'].lt(dataframe['lower'].shift())) &
-                    (dataframe['ha_close'].le(dataframe['ha_close'].shift()))
-                )
-                |
+            (
+                (dataframe['rocr_1h'].gt(self.rocr_1h.value)) &
                 (
-                    (dataframe['ha_close'] < dataframe['ema_slow']) &
-                    (dataframe['ha_close'] < self.close_bblower.value * dataframe['bb_lowerband'])
-                )
-            )
-            &
-            (dataframe['hh_48_diff'] > self.buy_hh_diff_48.value)
-            &
-            (dataframe['ll_48_diff'] > self.buy_ll_diff_48.value)
-        ,'buy'] = 1
-
+                    (
+                        (dataframe['lower'].shift().gt(0)) &
+                        (dataframe['bbdelta'].gt(dataframe['ha_close'] * self.bbdelta_close.value)) &
+                        (dataframe['closedelta'].gt(dataframe['ha_close'] * self.closedelta_close.value)) &
+                        (dataframe['tail'].lt(dataframe['bbdelta'] * self.bbdelta_tail.value)) &
+                        (dataframe['ha_close'].lt(dataframe['lower'].shift())) &
+                        (dataframe['ha_close'].le(dataframe['ha_close'].shift()))
+                    ) |
+                    (
+                        (dataframe['ha_close'] < dataframe['ema_slow']) &
+                        (dataframe['ha_close'] < self.close_bblower.value * dataframe['bb_lowerband'])
+                    )
+                ) &
+                (dataframe['hh_48_diff'] > self.buy_hh_diff_48.value) &
+                (dataframe['ll_48_diff'] > self.buy_ll_diff_48.value)
+            ),
+            'enter_long'] = 1
+    
+        # Short entry conditions (inverse of the long entry)
+        dataframe.loc[
+            (
+                (dataframe['rocr_1h'].lt(self.rocr_1h.value)) &
+                (
+                    (
+                        (dataframe['lower'].shift().le(0)) &
+                        (dataframe['bbdelta'].lt(dataframe['ha_close'] * self.bbdelta_close.value)) &
+                        (dataframe['closedelta'].lt(dataframe['ha_close'] * self.closedelta_close.value)) &
+                        (dataframe['tail'].gt(dataframe['bbdelta'] * self.bbdelta_tail.value)) &
+                        (dataframe['ha_close'].gt(dataframe['lower'].shift())) &
+                        (dataframe['ha_close'].ge(dataframe['ha_close'].shift()))
+                    ) |
+                    (
+                        (dataframe['ha_close'] > dataframe['ema_slow']) &
+                        (dataframe['ha_close'] > self.close_bblower.value * dataframe['bb_lowerband'])
+                    )
+                ) &
+                (dataframe['hh_48_diff'] < self.buy_hh_diff_48.value) &
+                (dataframe['ll_48_diff'] < self.buy_ll_diff_48.value)
+            ),
+            'enter_short'] = 1
+    
         return dataframe
-
-    def populate_short_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-
+    
+    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    
+        # Long exit conditions
         dataframe.loc[
-            ( dataframe['rocr_1h'].lt(self.rocr_1h.value) )
-            &
-            (   (
-                    (dataframe['lower'].shift().le(0)) &
-                    (dataframe['bbdelta'].lt(dataframe['ha_close'] * self.bbdelta_close.value)) &
-                    (dataframe['closedelta'].lt(dataframe['ha_close'] * self.closedelta_close.value)) &
-                    (dataframe['tail'].gt(dataframe['bbdelta'] * self.bbdelta_tail.value)) &
-                    (dataframe['ha_close'].gt(dataframe['lower'].shift())) &
-                    (dataframe['ha_close'].ge(dataframe['ha_close'].shift()))
-                )
-                |
-                (
-                    (dataframe['ha_close'] > dataframe['ema_slow']) &
-                    (dataframe['ha_close'] > self.close_bblower.value * dataframe['bb_lowerband'])
-                )
-            )
-            &
-            (dataframe['hh_48_diff'] < self.buy_hh_diff_48.value)
-            &
-            (dataframe['ll_48_diff'] < self.buy_ll_diff_48.value)
-        ,'short'] = 1
-
-        return dataframe
-
-    def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-
+            (
+                (dataframe['fisher'] > self.sell_fisher.value) &
+                (dataframe['ha_high'].le(dataframe['ha_high'].shift(1))) &
+                (dataframe['ha_high'].shift(1).le(dataframe['ha_high'].shift(2))) &
+                (dataframe['ha_close'].le(dataframe['ha_close'].shift(1))) &
+                (dataframe['ema_fast'] > dataframe['ha_close']) &
+                ((dataframe['ha_close'] * self.sell_bbmiddle_close.value) > dataframe['bb_middleband'])
+            ),
+            'exit_long'] = 1
+    
+        # Short exit conditions (inverse of the long exit)
         dataframe.loc[
-            (   (
-                    (dataframe['fisher'] > self.sell_fisher.value) &
-                    (dataframe['ha_high'].le(dataframe['ha_high'].shift(1))) &
-                    (dataframe['ha_high'].shift(1).le(dataframe['ha_high'].shift(2))) &
-                    (dataframe['ha_close'].le(dataframe['ha_close'].shift(1))) &
-                    (dataframe['ema_fast'] > dataframe['ha_close']) &
-                    ((dataframe['ha_close'] * self.sell_bbmiddle_close.value) > dataframe['bb_middleband'])
-                )
-                |
-                (
-                    (dataframe['close'] > dataframe['sma_9']) &
-                    (dataframe['close'] > (dataframe['ema_24'] * self.high_offset_2.value)) &
-                    (dataframe['rsi'] > 50) &
-                    (dataframe['rsi_fast'] > dataframe['rsi_slow'])
-                )
-                |
-                (
-                    (dataframe['sma_9'] > (dataframe['sma_9'].shift(1) + dataframe['sma_9'].shift(1) * 0.005 )) &
-                    (dataframe['close'] < dataframe['hma_50']) &
-                    (dataframe['close'] > (dataframe['ema_24'] * self.high_offset.value)) &
-                    (dataframe['rsi_fast'] > dataframe['rsi_slow'])
-                )
-            )
-            &
-            (dataframe['volume'] > 0)
-
-        ,'sell'] = 1
-
-        return dataframe
-
-    def populate_cover_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-
-        dataframe.loc[
-            (   (
-                    (dataframe['fisher'] < self.sell_fisher.value) &
-                    (dataframe['ha_low'].ge(dataframe['ha_low'].shift(1))) &
-                    (dataframe['ha_low'].shift(1).ge(dataframe['ha_low'].shift(2))) &
-                    (dataframe['ha_close'].ge(dataframe['ha_close'].shift(1))) &
-                    (dataframe['ema_fast'] < dataframe['ha_close']) &
-                    ((dataframe['ha_close'] * self.sell_bbmiddle_close.value) < dataframe['bb_middleband'])
-                )
-                |
-                (
-                    (dataframe['close'] < dataframe['sma_9']) &
-                    (dataframe['close'] < (dataframe['ema_24'] * self.high_offset_2.value)) &
-                    (dataframe['rsi'] < 50) &
-                    (dataframe['rsi_fast'] < dataframe['rsi_slow'])
-                )
-                |
-                (
-                    (dataframe['sma_9'] < (dataframe['sma_9'].shift(1) - dataframe['sma_9'].shift(1) * 0.005 )) &
-                    (dataframe['close'] > dataframe['hma_50']) &
-                    (dataframe['close'] < (dataframe['ema_24'] * self.high_offset.value)) &
-                    (dataframe['rsi_fast'] < dataframe['rsi_slow'])
-                )
-            )
-            &
-            (dataframe['volume'] > 0)
-
-        ,'cover'] = 1
-
+            (
+                (dataframe['fisher'] < self.sell_fisher.value) &
+                (dataframe['ha_low'].ge(dataframe['ha_low'].shift(1))) &
+                (dataframe['ha_low'].shift(1).ge(dataframe['ha_low'].shift(2))) &
+                (dataframe['ha_close'].ge(dataframe['ha_close'].shift(1))) &
+                (dataframe['ema_fast'] < dataframe['ha_close']) &
+                ((dataframe['ha_close'] * self.sell_bbmiddle_close.value) < dataframe['bb_middleband'])
+            ),
+            'exit_short'] = 1
+    
         return dataframe
         
-    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        dataframe = self.populate_buy_trend(dataframe, metadata)
-        dataframe = self.populate_short_trend(dataframe, metadata)
-        return dataframe
-
-    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        dataframe = self.populate_sell_trend(dataframe, metadata)
-        dataframe = self.populate_cover_trend(dataframe, metadata)
-        return dataframe
-
-    
         # Volume Weighted Moving Average
 def vwma(dataframe: DataFrame, length: int = 10):
     """Indicator: Volume Weighted Moving Average (VWMA)"""
@@ -673,7 +620,7 @@ class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
         current_time = datetime.now(timezone.utc)
         trailing_duration = current_time - trailing_buy['start_trailing_time']
         if trailing_duration.total_seconds() > self.trailing_expire_seconds:
-            if (current_trailing_profit_ratio > 0) and (last_candle['buy'] == 1):
+            if (current_trailing_profit_ratio > 0) and (last_candle['enter_long'] == 1):
                 return 'forcebuy'
             else:
                 return None
@@ -708,7 +655,7 @@ class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
         current_time = datetime.now(timezone.utc)
         trailing_duration = current_time - trailing_short['start_trailing_time']
         if trailing_duration.total_seconds() > self.trailing_expire_seconds_short:
-            if (current_trailing_profit_ratio > 0) and (last_candle['short'] == 1):
+            if (current_trailing_profit_ratio > 0) and (last_candle['enter_short'] == 1):
                 return 'forceshort'
             else:
                 return None
@@ -733,94 +680,60 @@ class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe = super().populate_indicators(dataframe, metadata)
+        # Initialize trailing structures for both long and short positions
         self.trailing_buy(metadata['pair'])
+        self.trailing_short(metadata['pair'])
         return dataframe
     
     def confirm_trade_entry(self, pair: str, order_type: str, amount: float, rate: float, time_in_force: str, **kwargs) -> bool:
         val = super().confirm_trade_entry(pair, order_type, amount, rate, time_in_force, **kwargs)
-
+    
         if val:
-            if self.trailing_buy_order_enabled and self.config['runmode'].value in ('live', 'dry_run'):
-                val = False
-                dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
-                if(len(dataframe) >= 1):
-                    last_candle = dataframe.iloc[-1].squeeze()
-                    current_price = rate
+            dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+            if len(dataframe) >= 1:
+                last_candle = dataframe.iloc[-1].squeeze()
+                current_price = rate
+    
+                if self.trailing_buy_order_enabled and self.config['runmode'].value in ('live', 'dry_run'):
                     trailing_buy = self.trailing_buy(pair)
                     trailing_buy_offset = self.trailing_buy_offset(dataframe, pair, current_price)
-
+    
                     if trailing_buy['allow_trailing']:
-                        if (not trailing_buy['trailing_buy_order_started'] and (last_candle['buy'] == 1)):
-                            # start trailing buy
-                            trailing_buy['trailing_buy_order_started'] = True
-                            trailing_buy['trailing_buy_order_uplimit'] = last_candle['close'] 
-                            trailing_buy['start_trailing_price'] = last_candle['close']
-                            trailing_buy['buy_tag'] = last_candle['buy_tag'] 
-                            trailing_buy['start_trailing_time'] = datetime.now(timezone.utc)
-                            trailing_buy['offset'] = 0
-
-                            self.trailing_buy_info(pair, current_price)
-                            logger.info(f'start trailing buy for {pair} at {last_candle["close"]}')
-
-                        elif trailing_buy['trailing_buy_order_started']: 
-                            if trailing_buy_offset == 'forcebuy':
-                                # buy in custom conditions
-                                val = True
-                                ratio = "%.2f" % ((self.current_trailing_profit_ratio(pair, current_price)) * 100)
-                                self.trailing_buy_info(pair, current_price)
-                                logger.info(f"price OK for {pair} ({ratio} %, {current_price}), order may not be triggered if margin not sufficient")
-
-                            elif trailing_buy_offset is None:
-                                # stop trailing buy custom conditions
-                                self.trailing_buy(pair, reinit=True)
-                                logger.info(f'STOP trailing buy for {pair} because "trailing buy offset" returned None')
-
-                            elif current_price < trailing_buy['trailing_buy_order_uplimit']:
-                                # update uplimit
-                                old_uplimit = trailing_buy["trailing_buy_order_uplimit"]
-                                self.custom_info_trail_buy[pair]['trailing_buy']['trailing_buy_order_uplimit'] = min(current_price * (1 + trailing_buy_offset), self.custom_info_trail_buy[pair]['trailing_buy']['trailing_buy_order_uplimit'])
-                                self.custom_info_trail_buy[pair]['trailing_buy']['offset'] = trailing_buy_offset
-                                self.trailing_buy_info(pair, current_price)
-                                logger.info(f'update trailing buy for {pair} at {old_uplimit} -> {self.custom_info_trail_buy[pair]["trailing_buy"]["trailing_buy_order_uplimit"]}')
-                            elif current_price < (trailing_buy['start_trailing_price'] * (1 + self.trailing_buy_max_buy)):
-                                # buy ! current price > uplimit && lower thant starting price 
-                                val = True
-                                ratio = "%.2f" % ((self.current_trailing_profit_ratio(pair, current_price)) * 100)
-                                self.trailing_buy_info(pair, current_price)
-                                logger.info(f"current price ({current_price}) > uplimit ({trailing_buy['trailing_buy_order_uplimit']}) and lower than starting price ({(trailing_buy['start_trailing_price'] * (1 + self.trailing_buy_max_buy))}). OK for {pair} ({ratio} %), order may not be triggered if margin not sufficient")
-
-                            elif current_price > (trailing_buy['start_trailing_price'] * (1 + self.trailing_buy_max_stop)):
-                                # stop trailing buy because price is too high
-                                self.trailing_buy(pair, reinit=True)
-                                self.trailing_buy_info(pair, current_price)
-                                logger.info(f'STOP trailing buy for {pair} because of the price is higher than starting price * {1 + self.trailing_buy_max_stop}')
-                            else:
-                                # uplimit > current_price > max_price, continue trailing and wait for the price to go down
-                                self.trailing_buy_info(pair, current_price)  
-                                logger.info(f'price too high for {pair} !')
-
-                    else:
-                        logger.info(f"Wait for next buy signal for {pair}")
-
-                if (val == True):
-                    self.trailing_buy_info(pair, rate)
+                        if not trailing_buy['trailing_order_started'] and last_candle['enter_long'] == 1:
+                            # Start trailing buy
+                            self.start_trailing_buy(trailing_buy, last_candle, pair, current_price)
+    
+                        elif trailing_buy['trailing_order_started']:
+                            val = self.handle_trailing_buy(trailing_buy, trailing_buy_offset, current_price, pair)
+    
+                if self.trailing_short_order_enabled and self.config['runmode'].value in ('live', 'dry_run'):
+                    trailing_short = self.trailing_short(pair)
+                    trailing_short_offset = self.trailing_short_offset(dataframe, pair, current_price)
+    
+                    if trailing_short['allow_trailing']:
+                        if not trailing_short['trailing_order_started'] and last_candle['enter_short'] == 1:
+                            # Start trailing short
+                            self.start_trailing_short(trailing_short, last_candle, pair, current_price)
+    
+                        elif trailing_short['trailing_order_started']:
+                            val = self.handle_trailing_short(trailing_short, trailing_short_offset, current_price, pair)
+    
+                if val:
+                    # Reset the trailing structures if a trade is confirmed
                     self.trailing_buy(pair, reinit=True)
-                    logger.info(f'STOP trailing buy for {pair} because I buy it')
-        
+                    self.trailing_short(pair, reinit=True)
+    
         return val
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         # Process long entry signals
-        dataframe = super().populate_buy_trend(dataframe, metadata)
-
-        # Process short entry signals
-        dataframe = self.populate_short_trend(dataframe, metadata)
+        dataframe = super().populate_entry_trend(dataframe, metadata)
 
         # Trailing logic for long positions
         if self.trailing_buy_order_enabled and self.config['runmode'].value in ('live', 'dry_run'):
             last_candle = dataframe.iloc[-1].squeeze()
             trailing_buy = self.trailing_buy(metadata['pair'])
-            if last_candle['buy'] == 1:
+            if last_candle['enter_long'] == 1:
                 if not trailing_buy['trailing_buy_order_started']:
                     open_trades = Trade.get_trades([Trade.pair == metadata['pair'], Trade.is_open.is_(True), ]).all()
                     if not open_trades:
@@ -838,7 +751,7 @@ class ClucHAnix_hhll_TB_Futures(ClucHAnix_hhll_Futures):
         if self.trailing_short_order_enabled and self.config['runmode'].value in ('live', 'dry_run'):
             last_candle = dataframe.iloc[-1].squeeze()
             trailing_short = self.trailing_short(metadata['pair'])
-            if last_candle['short'] == 1:
+            if last_candle['enter_short'] == 1:
                 if not trailing_short['trailing_short_order_started']:
                     open_trades = Trade.get_trades([Trade.pair == metadata['pair'], Trade.is_open.is_(True), ]).all()
                     if not open_trades:
