@@ -15,7 +15,6 @@ class RingRong5m(IStrategy):
     can_short: bool = True
     timeframe = '5m'
     stoploss = -0.05
-
     def populate_indicators(self, df: pd.DataFrame, metadata: dict) -> pd.DataFrame:
         pd.set_option('display.max_rows', 100000)
         pd.set_option('display.precision', 10)
@@ -51,8 +50,8 @@ class RingRong5m(IStrategy):
 
         if len(times) > 0:
             for i in range(500, len(df)):
-                if df['min_local'].loc[i] > 0:
-                    close = df['c'].loc[i]
+                if df.loc[i, 'min_local'] > 0:
+                    close = df.loc[i, 'c']
 
                     chunk = df[:i - 10]
                     chunk['min_local'] = chunk.iloc[signal.argrelextrema(chunk.c.values, np.less_equal, order=n)[0]]['c']
@@ -60,7 +59,7 @@ class RingRong5m(IStrategy):
                     time_chunk = chunk.query(f'min_local > 0')
 
                     for x, row in time_chunk.iterrows():
-                        close_chunk = time_chunk['c'].loc[x]
+                        close_chunk = time_chunk.loc[x, 'c']
                         prices.append(close_chunk)
 
                     for p in prices:
@@ -68,11 +67,11 @@ class RingRong5m(IStrategy):
 
                         if 0 < diff < 0.3:
                             logging.getLogger('freqtrade').info(str([i, '+++', diff, p]))
-                            df['min_level'].loc[i] = 1
+                            df.loc[i, 'min_level'] = 1
 
                 for x in range(i - 2, i):
-                    if df['min_level'].loc[x] > 0:
-                        close = df['c'].loc[i]
+                    if df.loc[x, 'min_level'] > 0:
+                        close = df.loc[i, 'c']
 
                         df_tail = df[i - 200: i].query(f'c < {close}')
 
@@ -80,24 +79,24 @@ class RingRong5m(IStrategy):
                             logging.getLogger('freqtrade').info(
                                 str([i, '++++', min, diff, '---', prices, 'long ++++++'])
                             )
-                            df['buy_long'].loc[i] = 1
-                            df['i_low'].loc[i] = df['low'].loc[x]
-                            df['i_high'].loc[i] = df['high'].loc[x]
-                            df['i_open'].loc[i] = df['o'].loc[x]
-                            df['i_close'].loc[i] = df['c'].loc[x]
+                            df.loc[i, 'buy_long'] = 1
+                            df.loc[i, 'i_low'] = df.loc[x, 'low'].astype(df['i_low'].dtype)
+                            df.loc[i, 'i_high'] = df.loc[x, 'high'].astype(df['i_high'].dtype)
+                            df.loc[i, 'i_open'] = df.loc[x, 'o'].astype(df['i_open'].dtype)
+                            df.loc[i, 'i_close'] = df.loc[x, 'c'].astype(df['i_close'].dtype)
 
                 for x in range(i - 100, i):
-                    if df['min_level'].loc[x] > 0:
-                        diff = self.diff_percentage(df['c'].loc[x], df['c'].loc[i])
+                    if df.loc[x, 'min_level'] > 0:
+                        diff = self.diff_percentage(df.loc[x, 'c'], df.loc[i, 'c'])
                         if 0 < diff < 1:
                             logging.getLogger('freqtrade').info(
                                 str([i, '---- long2 ----'])
                             )
-                            df['buy_long2'].loc[i] = 1
-                            df['i_low'].loc[i] = df['low'].loc[x]
-                            df['i_high'].loc[i] = df['high'].loc[x]
-                            df['i_open'].loc[i] = df['o'].loc[x]
-                            df['i_close'].loc[i] = df['c'].loc[x]
+                            df.loc[i, 'buy_long2'] = 1
+                            df.loc[i, 'i_low'] = df.loc[x, 'low'].astype(df['i_low'].dtype)
+                            df.loc[i, 'i_high'] = df.loc[x, 'high'].astype(df['i_high'].dtype)
+                            df.loc[i, 'i_open'] = df.loc[x, 'o'].astype(df['i_open'].dtype)
+                            df.loc[i, 'i_close'] = df.loc[x, 'c'].astype(df['i_close'].dtype)
 
         return df
 
@@ -111,8 +110,8 @@ class RingRong5m(IStrategy):
 
         if len(times) > 0:
             for i in range(500, len(df)):
-                if df['max_local'].loc[i] > 0:
-                    close = df['c'].loc[i]
+                if df.loc[i, 'max_local'] > 0:
+                    close = df.loc[i, 'c']
 
                     chunk = df[:i - 10]
                     chunk['max_x'] = chunk.iloc[signal.argrelextrema(chunk.c.values, np.greater_equal, order=n)[0]]['c']
@@ -120,7 +119,7 @@ class RingRong5m(IStrategy):
                     time_chunk = chunk.query(f'max_x > 0')
 
                     for x, row in time_chunk.iterrows():
-                        close_chunk = time_chunk['c'].loc[x]
+                        close_chunk = time_chunk.loc[x, 'c']
                         prices.append(close_chunk)
 
                     for p in prices:
@@ -128,11 +127,11 @@ class RingRong5m(IStrategy):
 
                         if 0 < diff < 0.3:
                             logging.getLogger('freqtrade').info(str([i, '---', diff, p]))
-                            df['max_level'].loc[i] = 1
+                            df.loc[i, 'max_level'] = 1
 
                 for x in range(i - 2, i):
-                    if df['max_level'].loc[x] > 0:
-                        close = df['c'].loc[i]
+                    if df.loc[x, 'max_level'] > 0:
+                        close = df.loc[i, 'c']
 
                         df_tail = df[i - 200: i].query(f'c > {close}')
 
@@ -140,24 +139,24 @@ class RingRong5m(IStrategy):
                             logging.getLogger('freqtrade').info(
                                 str([i, '---', max, diff, '---', prices, 'short -----'])
                             )
-                            df['buy_short'].loc[i] = 1
-                            df['i_low'].loc[i] = df['low'].loc[x]
-                            df['i_high'].loc[i] = df['high'].loc[x]
-                            df['i_open'].loc[i] = df['o'].loc[x]
-                            df['i_close'].loc[i] = df['c'].loc[x]
+                            df.loc[i, 'buy_short'] = 1
+                            df.loc[i, 'i_low'] = df.loc[x, 'low'].astype(df['i_low'].dtype)
+                            df.loc[i, 'i_high'] = df.loc[x, 'high'].astype(df['i_high'].dtype)
+                            df.loc[i, 'i_open'] = df.loc[x, 'o'].astype(df['i_open'].dtype)
+                            df.loc[i, 'i_close'] = df.loc[x, 'c'].astype(df['i_close'].dtype)
 
                 for x in range(i - 100, i):
-                    if df['max_level'].loc[x] > 0:
-                        diff = self.diff_percentage(df['c'].loc[x], df['c'].loc[i])
+                    if df.loc[x, 'max_level'] > 0:
+                        diff = self.diff_percentage(df.loc[x, 'c'], df.loc[i, 'c'])
                         if 0 < diff < 1:
                             logging.getLogger('freqtrade').info(
                                 str([i, '---- short2 ----'])
                             )
-                            df['buy_short2'].loc[i] = 1
-                            df['i_low'].loc[i] = df['low'].loc[x]
-                            df['i_high'].loc[i] = df['high'].loc[x]
-                            df['i_open'].loc[i] = df['o'].loc[x]
-                            df['i_close'].loc[i] = df['c'].loc[x]
+                            df.loc[i, 'buy_short2'] = 1
+                            df.loc[i, 'i_low'] = df.loc[x, 'low'].astype(df['i_low'].dtype)
+                            df.loc[i, 'i_high'] = df.loc[x, 'high'].astype(df['i_high'].dtype)
+                            df.loc[i, 'i_open'] = df.loc[x, 'o'].astype(df['i_open'].dtype)
+                            df.loc[i, 'i_close'] = df.loc[x, 'c'].astype(df['i_close'].dtype)
 
         return df
 
