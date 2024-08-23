@@ -11,7 +11,7 @@ from statistics import mean
 from freqtrade.persistence.trade_model import Trade
 from freqtrade.strategy.interface import IStrategy
 
-class RingRong5m(IStrategy):
+class RingRong(IStrategy):
     can_short: bool = True
     timeframe = '5m'
     stoploss = -0.05
@@ -223,7 +223,7 @@ class RingRong5m(IStrategy):
                             **kwargs) -> bool:
         df, last_updated = self.dp.get_analyzed_dataframe(pair=pair, timeframe=self.timeframe)
 
-        print('------------------- confirm_trade_entry -------------', pair, rate)
+      #  print('------------------- confirm_trade_entry -------------', pair, rate)
 
         mean = (
             df['i_open'].iat[-1] +
