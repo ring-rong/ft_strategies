@@ -223,7 +223,7 @@ class RingRong(IStrategy):
                             **kwargs) -> bool:
         df, last_updated = self.dp.get_analyzed_dataframe(pair=pair, timeframe=self.timeframe)
 
-      #  print('------------------- confirm_trade_entry -------------', pair, rate)
+        print('------------------- confirm_trade_entry -------------', pair, rate)
 
         mean = (
             df['i_open'].iat[-1] +
