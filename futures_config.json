@@ -1,5 +1,5 @@
 {
-    "max_open_trades": 6,
+    "max_open_trades": 4,
     "stake_currency": "USDT",
     "stake_amount": "unlimited",
     "tradable_balance_ratio": 0.9,
@@ -9,7 +9,7 @@
     "trading_mode": "futures",
     "margin_mode": "isolated",
     "stoploss_on_exchange": true,
-    "dry_run": true,
+    "dry_run": false,
     "cancel_open_orders_on_exit": false,
     "unfilledtimeout": {
         "unit": "minutes",
@@ -46,9 +46,9 @@
         "order_book_top": 1
     },
 "exchange": {
-"name": "binance",
-  "key": "qOlvZ8PSdo4GsGF9WXrMdAFlPYoi5svGSKZwyKGC2WPQObvuEOZIkM8JWI2BKlZT",
-  "secret": "dCYCiBv8IF5pt2jgaCi9m8Kq4XvRJjB1WD6aoZotAMkqcRbV6ScGo4r0EQ1ktvTD",
+"name": "bybit",
+  "key": "nMaW7ec7bGVEd5YyVr",
+  "secret": "CDjEKGCQPq59yFjcyZ36U2LKwIXFMPwiXhxx",
   "ccxt_config": {
     "enableRateLimit": true
   },
@@ -84,7 +84,7 @@
 "telegram": {
   "enabled": true,
   "token": "6173054253:AAGZ1El5Ok_1HMhnsey2SEHwzlVKDGwnV4I",
-  "chat_id": "330644191",
+  "chat_id": "-1002169619662",
   "notification_settings": {
     "status": "on",
     "warning": "on",
