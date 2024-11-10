@@ -60,21 +60,19 @@ class ClucHAnix_hhll(IStrategy):
 
     # ROI table:
     minimal_roi = {
-        "0": 0.103,
-        "3": 0.05,
-        "5": 0.033,
-        "61": 0.027,
-        "125": 0.011,
-        "292": 0.005,
+        "0": 0.20,
+        "720": 0.15,
+        "1440": 0.10,
+        "4320": 0.05
     }
 
     # Stoploss:
-    stoploss = -0.99  # use custom stoploss
+    stoploss = -0.15  # использовать больший стоплосс, например, 15%
 
     # Trailing stop:
     trailing_stop = False
-    trailing_stop_positive = 0.001
-    trailing_stop_positive_offset = 0.012
+    trailing_stop_positive = 0.10
+    trailing_stop_positive_offset = 0.15
     trailing_only_offset_is_reached = False
 
     """
@@ -125,8 +123,8 @@ class ClucHAnix_hhll(IStrategy):
 
     # sell params
     is_optimize_sell = False
-    sell_fisher = RealParameter(0.1, 0.5, default=0.38414, space='sell', optimize = is_optimize_sell)
-    sell_bbmiddle_close = RealParameter(0.97, 1.1, default=1.07634, space='sell', optimize = is_optimize_sell)
+    sell_fisher = RealParameter(0.3, 0.7, default=0.5842, space='sell', optimize = is_optimize_sell)
+    sell_bbmiddle_close = RealParameter(0.97, 1.2, default=1.11634, space='sell', optimize = is_optimize_sell)
     high_offset          = DecimalParameter(0.90, 1.2, default=sell_params['high_offset'], space='sell', optimize = is_optimize_sell)
     high_offset_2        = DecimalParameter(0.90, 1.5, default=sell_params['high_offset_2'], space='sell', optimize = is_optimize_sell)
 
