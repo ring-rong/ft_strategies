@@ -1,9 +1,7 @@
 import numpy as np
-import matplotlib
 import pandas as pd
 import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
-import matplotlib.pyplot as plt
 from freqtrade.strategy import IStrategy, informative, merge_informative_pair
 from pandas import DataFrame, Series
 from functools import reduce
@@ -201,27 +199,6 @@ class VolumVIDYARecurv4(IStrategy):
         signals = pd.concat([buy_signal.rename('welborg_buy'), sell_signal.rename('welborg_sell')], axis=1)
 
         return signals
-
-    def plot_config(self, df):
-        """
-        Функция для настройки графика.
-        """
-        plot_config = {
-            'main_plot': {
-                'vidya': {'color': 'green'},
-                'smoothed_value': {'color': 'orange'},
-                'upper_band': {'color': 'red'},
-                'lower_band': {'color': 'blue'},
-                'pivot_high': {'color': 'purple'},
-                'pivot_low': {'color': 'purple'},
-                'welborg_buy': {'type': 'scatter', 'color': 'green', 'marker': '^'},
-                'welborg_sell': {'type': 'scatter', 'color': 'red', 'marker': 'v'},
-            },
-            'subplots': {
-                'volume': {'color': 'blue'}
-            }
-        }
-        return plot_config
 
     def informative_pairs(self):
         """
