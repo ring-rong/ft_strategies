@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib
 import pandas as pd
 import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
